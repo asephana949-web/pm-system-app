@@ -14,9 +14,10 @@
         .sidebar a { color: #bdc3c7; text-decoration: none; padding: 10px 20px; display: block; }
         .sidebar a:hover, .sidebar a.aktif { background-color: #34495e; color: white; border-left: 4px solid #3498db; }
         
-        .kpi-card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #3498db; }
+        .kpi-card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #3498db; position: relative; }
         .kpi-title { font-size: 12px; color: #7f8c8d; text-transform: uppercase; font-weight: bold; }
-        .kpi-value { font-size: 24px; font-weight: bold; color: #2c3e50; }
+        .kpi-value { font-size: 24px; font-weight: bold; color: #2c3e50; margin-top: 5px; }
+        .info-icon { position: absolute; top: 15px; right: 15px; cursor: pointer; color: #3498db; font-size: 16px; }
         
         .status-aman { background-color: #2ecc71; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;}
         .status-hati-hati { background-color: #f1c40f; color: black; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;}
@@ -48,13 +49,16 @@
         <div class="col-md-10 p-4">
             
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-                <h2>Dashboard Kondisi Mesin (Live Database)</h2>
+                <h2>Dashboard Kondisi Mesin</h2>
                 
                 <div class="d-flex align-items-center gap-4">
                     <div class="d-flex align-items-center gap-3">
                         <div class="d-flex align-items-center bg-white border rounded p-1 shadow-sm">
                             <label class="fw-bold mx-2 text-nowrap"><i class="fa-solid fa-calendar-days text-primary"></i> Periode:</label>
                             <select class="form-select form-select-sm border-0 fw-bold shadow-none" id="filterPeriodeDashboard" onchange="filterDashboard()">
+                                <optgroup label="Tahunan">
+                                    <option value="Y" selected>Tahunan Berjalan (YTD)</option>
+                                </optgroup>
                                 <optgroup label="Bulanan">
                                     <option value="1">Januari</option>
                                     <option value="2">Februari</option>
@@ -69,41 +73,13 @@
                                     <option value="11">November</option>
                                     <option value="12">Desember</option>
                                 </optgroup>
-                                <optgroup label="Quarter (Kuartal)">
-                                    <option value="Q1">Quarter 1 (Jan-Mar)</option>
-                                    <option value="Q2">Quarter 2 (Apr-Jun)</option>
-                                    <option value="Q3">Quarter 3 (Jul-Sep)</option>
-                                    <option value="Q4">Quarter 4 (Okt-Des)</option>
-                                </optgroup>
-                                <optgroup label="Semester">
-                                    <option value="S1">Semester 1 (Jan-Jun)</option>
-                                    <option value="S2">Semester 2 (Jul-Des)</option>
-                                </optgroup>
-                                <optgroup label="Tahunan">
-                                    <option value="Y" selected>Tahunan Berjalan (YTD)</option>
-                                </optgroup>
                             </select>
                         </div>
 
                         <div>
-                            <!-- Diubah dari Area ke Wilayah -->
                             <select class="form-select d-inline-block w-auto shadow-sm fw-bold" id="wilayahFilter" onchange="filterDashboard()">
                                 <option value="semua">Semua Wilayah</option>
-                                <!-- Render Dinamis dari JS -->
                             </select>
-                        </div>
-                    </div>
-
-                    <div class="d-flex align-items-center gap-3 border-start ps-4">
-                        <div class="position-relative" style="cursor: pointer;">
-                            <i class="fa-solid fa-bell fs-5 text-secondary"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
-                                <span class="visually-hidden">Notifikasi Baru</span>
-                            </span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2" style="cursor: pointer;">
-                            <img src="https://ui-avatars.com/api/?name={{ username }}&background=3498db&color=fff" alt="User" class="rounded-circle" width="35" height="35">
-                            <span class="fw-bold text-dark">{{ username }}</span>
                         </div>
                     </div>
                 </div>
@@ -112,13 +88,15 @@
             <div class="row mb-4">
                 <div class="col-md-3">
                     <div class="kpi-card" style="border-left-color: #2ecc71;">
-                        <div class="kpi-title">MTBF Wilayah (Jarak Antar Downtime)</div>
+                        <i class="fa-solid fa-circle-info info-icon" data-bs-toggle="modal" data-bs-target="#modalMTBF"></i>
+                        <div class="kpi-title">MTBF Wilayah (Ketersediaan)</div>
                         <div class="kpi-value" id="mtbfValue">Menghitung...</div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="kpi-card" style="border-left-color: #e74c3c;">
-                        <div class="kpi-title">MTTR Wilayah (Waktu Kehilangan Prod.)</div>
+                        <i class="fa-solid fa-circle-info info-icon" data-bs-toggle="modal" data-bs-target="#modalMTTR"></i>
+                        <div class="kpi-title">MTTR Wilayah (Waktu Perbaikan)</div>
                         <div class="kpi-value" id="mttrValue">Menghitung...</div>
                     </div>
                 </div>
@@ -154,10 +132,10 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>#</th>
-                                        <th>ID Mesin</th>
+                                        <th>ID & Nama Mesin</th>
                                         <th>Wilayah</th>
-                                        <th>Indikasi AI / Diagnosa</th>
-                                        <th>Status Kondisi</th>
+                                        <th>Indikasi AI</th>
+                                        <th>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabelTop10"></tbody>
@@ -185,8 +163,8 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>Target Tgl</th>
-                                        <th>ID Mesin</th>
-                                        <th>Tindakan (Jenis Pekerjaan)</th>
+                                        <th>ID & Nama Mesin</th>
+                                        <th>Tindakan (Pekerjaan)</th>
                                         <th>Status WO</th>
                                     </tr>
                                 </thead>
@@ -201,13 +179,57 @@
     </div>
 </div>
 
+<!-- Modal Penjelasan MTBF -->
+<div class="modal fade" id="modalMTBF" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fa-solid fa-calculator"></i> Penjelasan MTBF Dashboard</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Di halaman Dashboard, <strong>MTBF (Mean Time Between Failure)</strong> dihitung berdasarkan sudut pandang <strong>Kerugian Produksi (Downtime Pabrik)</strong>.</p>
+                <div class="bg-light p-3 border rounded mb-3">
+                    <strong>Rumus:</strong><br>
+                    (Total Jam Operasional - Total Jam Downtime) / Jumlah Kejadian Downtime
+                </div>
+                <ul>
+                    <li><strong>Total Jam Operasional:</strong> Menghitung total jam kalender (24 jam x Jumlah Hari dalam periode yang dipilih).</li>
+                    <li><strong>Kejadian Kerusakan:</strong> Hanya kerusakan yang menyebabkan <strong>mesin mati (Is Downtime = Ya)</strong> yang dihitung. Kerusakan komponen yang tidak mengganggu produksi akan diabaikan.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Penjelasan MTTR -->
+<div class="modal fade" id="modalMTTR" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fa-solid fa-wrench"></i> Penjelasan MTTR Dashboard</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Di halaman Dashboard, <strong>MTTR (Mean Time To Repair)</strong> mewakili rata-rata <strong>Waktu Kehilangan Produksi</strong> akibat kerusakan.</p>
+                <div class="bg-light p-3 border rounded mb-3">
+                    <strong>Rumus:</strong><br>
+                    Total Jam Downtime / Jumlah Kejadian Downtime
+                </div>
+                <ul>
+                    <li>Hitungan ini murni mengambil angka dari kolom <strong>Downtime (Jam)</strong> di Riwayat Perbaikan.</li>
+                    <li>Waktu/durasi mekanik bekerja tidak dimasukkan dalam hitungan ini, karena fokus utama Dashboard adalah seberapa cepat ketersediaan mesin kembali normal.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
 <script>
-    let kondisiChart;
-    let trenChart;
-
-    // Data Penampung Global dari Database
+    let kondisiChart, trenChart;
     let dbMaster = [], dbRiwayat = [], dbLogAI = [], dbJadwal = [];
     let tahunBerjalan = new Date().getFullYear();
 
@@ -220,23 +242,17 @@
             fetch('/api/ai-analysis').then(res => res.json()),
             fetch('/api/jadwal').then(res => res.json())
         ]).then(([master, riwayat, ai, jadwal]) => {
-            dbMaster = master;
-            dbRiwayat = riwayat;
-            dbLogAI = ai;
-            dbJadwal = jadwal;
+            dbMaster = master; dbRiwayat = riwayat; dbLogAI = ai; dbJadwal = jadwal;
 
-            // Generate Opsi Dropdown Wilayah Berdasarkan Database Master (Bukan Area)
             const wilayahUnik = [...new Set(dbMaster.map(m => m.wilayah).filter(w => w && w.trim() !== '-' && w.trim() !== ''))];
             const wilayahDropdown = document.getElementById('wilayahFilter');
             wilayahUnik.forEach(wil => {
                 wilayahDropdown.insertAdjacentHTML('beforeend', `<option value="${wil}">${wil}</option>`);
             });
 
-            // Jalankan Filter Utama
             filterDashboard();
         }).catch(err => {
-            console.error("Gagal menarik data dari server:", err);
-            alert("Terjadi kesalahan saat memuat database.");
+            console.error("Gagal menarik data:", err);
         });
     });
 
@@ -244,40 +260,33 @@
         const ctxDonut = document.getElementById('kondisiChart').getContext('2d');
         kondisiChart = new Chart(ctxDonut, {
             type: 'doughnut',
-            data: {
-                labels: ['Aman (Zone A/B)', 'Waspada (Zone C)', 'Berbahaya (Zone D)'],
-                datasets: [{ data: [0, 0, 0], backgroundColor: ['#2ecc71', '#f1c40f', '#e74c3c'], borderWidth: 0 }]
-            },
+            data: { labels: ['Aman (Zone A/B)', 'Waspada (Zone C)', 'Berbahaya (Zone D)'], datasets: [{ data: [0,0,0], backgroundColor: ['#2ecc71', '#f1c40f', '#e74c3c'], borderWidth: 0 }] },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
         });
 
         const ctxBar = document.getElementById('trenChart').getContext('2d');
         trenChart = new Chart(ctxBar, {
             type: 'bar',
-            data: {
-                labels: ['Unbalance', 'Bearing Defect', 'Misalignment', 'Looseness'],
-                datasets: [{ label: 'Jumlah Kasus', data: [0, 0, 0, 0], backgroundColor: ['#3498db', '#e74c3c', '#9b59b6', '#f39c12'], borderRadius: 4 }]
-            },
+            data: { labels: ['Unbalance', 'Bearing Defect', 'Misalignment', 'Looseness'], datasets: [{ label: 'Jumlah', data: [0,0,0,0], backgroundColor: ['#3498db', '#e74c3c', '#9b59b6', '#f39c12'], borderRadius: 4 }] },
             options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }
         });
+    }
+
+    // Fungsi Format Tanggal (Misal: 25-Okt-2026)
+    function formatTanggalPendek(tglStr) {
+        if (!tglStr) return "-";
+        const d = new Date(tglStr);
+        const bulan = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"];
+        return `${d.getDate()}-${bulan[d.getMonth()]}-${d.getFullYear()}`;
     }
 
     function getStartEndDate(periodeVal) {
         let start, end;
         if (periodeVal === 'Y') {
             start = new Date(tahunBerjalan, 0, 1); end = new Date(tahunBerjalan, 11, 31);
-        } else if (periodeVal.startsWith('Q')) {
-            const q = parseInt(periodeVal.replace('Q', ''));
-            start = new Date(tahunBerjalan, (q - 1) * 3, 1);
-            end = new Date(tahunBerjalan, q * 3, 0);
-        } else if (periodeVal.startsWith('S')) {
-            const s = parseInt(periodeVal.replace('S', ''));
-            start = new Date(tahunBerjalan, (s - 1) * 6, 1);
-            end = new Date(tahunBerjalan, s * 6, 0);
         } else {
             const bln = parseInt(periodeVal) - 1;
-            start = new Date(tahunBerjalan, bln, 1);
-            end = new Date(tahunBerjalan, bln + 1, 0); // Akan mendapatkan hari terakhir bulan tersebut secara presisi (contoh: 30 atau 31)
+            start = new Date(tahunBerjalan, bln, 1); end = new Date(tahunBerjalan, bln + 1, 0); 
         }
         return { start, end };
     }
@@ -287,10 +296,9 @@
         const wilayahVal = document.getElementById('wilayahFilter').value;
         const { start, end } = getStartEndDate(periodeVal);
 
-        // Filter Mesin Berdasarkan Wilayah
         const listMesinID = dbMaster.filter(m => wilayahVal === 'semua' || m.wilayah === wilayahVal).map(m => m.id_mesin);
 
-        // 1. HITUNG MTBF & MTTR (Hanya Berdasarkan DOWNTIME PRODUKSI / is_downtime = 'Ya')
+        // 1. HITUNG MTBF & MTTR
         const riwayatPeriode = dbRiwayat.filter(r => {
             const tgl = new Date(r.tgl_eksekusi);
             return listMesinID.includes(r.nama_alat) && tgl >= start && tgl <= end && String(r.is_downtime).toLowerCase() === 'ya';
@@ -298,15 +306,9 @@
 
         let totalDowntimeJam = 0;
         let countBreakdown = riwayatPeriode.length;
-        
-        riwayatPeriode.forEach(r => {
-            // Murni menggunakan jam downtime (kehilangan produksi), BUKAN durasi mekanik bekerja
-            totalDowntimeJam += (parseFloat(r.downtime_jam) || 0);
-        });
+        riwayatPeriode.forEach(r => { totalDowntimeJam += (parseFloat(r.downtime_jam) || 0); });
 
-        // Hitung total jam operasional kalender (misal 1 bulan 31 hari = 744 jam)
-        let diffTime = Math.abs(end - start);
-        let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        let diffDays = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24));
         if (diffDays === 0) diffDays = 1;
         const jamOperasionalPlant = diffDays * 24; 
 
@@ -316,34 +318,24 @@
         if (countBreakdown > 0) {
             let mttr = totalDowntimeJam / countBreakdown;
             let mtbf = (jamOperasionalPlant - totalDowntimeJam) / countBreakdown;
-            
             elMttr.innerText = mttr.toFixed(1) + " Jam";
             elMtbf.innerText = Math.round(mtbf).toLocaleString() + " Jam";
-            
-            elMttr.className = mttr > 8 ? "kpi-value text-danger" : (mttr >= 4 ? "kpi-value text-warning" : "kpi-value text-success");
-            elMtbf.className = mtbf < 168 ? "kpi-value text-danger" : (mtbf <= 720 ? "kpi-value text-warning" : "kpi-value text-success");
         } else {
             elMttr.innerText = "0 Jam";
             elMtbf.innerText = "> " + jamOperasionalPlant.toLocaleString() + " Jam";
-            elMttr.className = "kpi-value text-success"; elMtbf.className = "kpi-value text-success";
         }
 
-        // 2. HITUNG PM COMPLIANCE & WO AKTIF (Mengubah istilah Tiket menjadi WO)
-        const jadwalPeriode = dbJadwal.filter(j => {
-            const tgl = new Date(j.tgl_rencana);
-            return listMesinID.includes(j.id_mesin) && tgl >= start && tgl <= end;
-        });
-
+        // 2. HITUNG PM COMPLIANCE
+        const jadwalPeriode = dbJadwal.filter(j => listMesinID.includes(j.id_mesin) && new Date(j.tgl_rencana) >= start && new Date(j.tgl_rencana) <= end);
         let totalPM = jadwalPeriode.length;
         let pmSelesai = jadwalPeriode.filter(j => j.status === 'Completed').length;
         let pmPending = totalPM - pmSelesai;
         let persentasePM = totalPM === 0 ? 100 : Math.round((pmSelesai / totalPM) * 100);
 
         document.getElementById('pmValue').innerText = persentasePM + "%";
-        document.getElementById('pmValue').className = persentasePM >= 90 ? "kpi-value text-success" : (persentasePM >= 75 ? "kpi-value text-warning" : "kpi-value text-danger");
         document.getElementById('woAktifValue').innerText = pmPending + " WO";
 
-        // 3. GRAFIK KONDISI MESIN & TOP 10 KRITIS (Dari AI Log Terbaru per Mesin)
+        // 3. GRAFIK KONDISI MESIN & TOP 10 KRITIS
         let logTerbaruPerMesin = [];
         listMesinID.forEach(id => {
             let logs = dbLogAI.filter(l => l.id_mesin === id && new Date(l.tgl_analisis) >= start && new Date(l.tgl_analisis) <= end);
@@ -359,7 +351,6 @@
         logTerbaruPerMesin.forEach(log => {
             let status = log.status_iso.toLowerCase();
             let rankScore = 1;
-            
             if (status.includes('zone d') || status.includes('berbahaya')) { countBahaya++; rankScore = 3; }
             else if (status.includes('zone c') || status.includes('waspada')) { countWaspada++; rankScore = 2; }
             else { countAman++; }
@@ -368,6 +359,7 @@
                 let mObj = dbMaster.find(m => m.id_mesin === log.id_mesin);
                 top10Raw.push({
                     id: log.id_mesin,
+                    nama: mObj ? mObj.nama_mesin : '',
                     wilayah: mObj ? mObj.wilayah : '-',
                     indikasi: log.indikasi,
                     score: rankScore,
@@ -376,21 +368,23 @@
             }
         });
 
-        kondisiChart.data.datasets[0].data = [countAman, countWaspada, countBahaya];
-        kondisiChart.update();
+        kondisiChart.data.datasets[0].data = [countAman, countWaspada, countBahaya]; kondisiChart.update();
 
         top10Raw.sort((a, b) => b.score - a.score); 
         const tbodyTop10 = document.getElementById('tabelTop10');
         tbodyTop10.innerHTML = "";
         
         if (top10Raw.length === 0) {
-            tbodyTop10.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Tidak ada mesin berisiko tinggi. Plant Aman!</td></tr>`;
+            tbodyTop10.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Aman! Tidak ada indikasi bahaya.</td></tr>`;
         } else {
             top10Raw.slice(0, 10).forEach((item, index) => {
                 let badge = item.score === 3 ? "status-berbahaya" : "status-hati-hati";
+                // Gabungkan ID dan Nama Mesin
+                let namaTampil = item.nama ? `${item.id}<br><small class="text-muted">${item.nama}</small>` : item.id;
+                
                 let row = `<tr>
                         <td>${index + 1}</td>
-                        <td class="fw-bold text-primary">${item.id}</td>
+                        <td class="fw-bold text-primary" style="line-height:1.2;">${namaTampil}</td>
                         <td>${item.wilayah}</td>
                         <td><span class="teks-ringkas" title="${item.indikasi}">${item.indikasi}</span></td>
                         <td><span class="${badge}">${item.statusText}</span></td>
@@ -399,33 +393,33 @@
             });
         }
 
-        // 4. GRAFIK TREN JENIS KERUSAKAN AI
-        let countUnb = 0, countBrg = 0, countMisal = 0, countLoose = 0;
+        // 4. GRAFIK TREN
+        let counts = [0,0,0,0];
         dbLogAI.filter(l => listMesinID.includes(l.id_mesin) && new Date(l.tgl_analisis) >= start && new Date(l.tgl_analisis) <= end).forEach(log => {
             let ind = log.indikasi.toLowerCase();
-            if (ind.includes('unbalance')) countUnb++;
-            if (ind.includes('bearing') || ind.includes('bpfi') || ind.includes('bpfo')) countBrg++;
-            if (ind.includes('misalignment')) countMisal++;
-            if (ind.includes('looseness')) countLoose++;
+            if (ind.includes('unbalance')) counts[0]++;
+            if (ind.includes('bearing') || ind.includes('bpfi') || ind.includes('bpfo')) counts[1]++;
+            if (ind.includes('misalignment')) counts[2]++;
+            if (ind.includes('looseness')) counts[3]++;
         });
+        trenChart.data.datasets[0].data = counts; trenChart.update();
 
-        trenChart.data.datasets[0].data = [countUnb, countBrg, countMisal, countLoose];
-        trenChart.update();
-
-        // 5. TABEL PREDIKTIF & WO AKTIF
+        // 5. TABEL PREDIKTIF
         const tbodyPrediktif = document.getElementById('tabelPrediktif');
         tbodyPrediktif.innerHTML = "";
-        
         let listPending = jadwalPeriode.filter(j => j.status !== 'Completed').sort((a,b) => new Date(a.tgl_rencana) - new Date(b.tgl_rencana));
         
         if (listPending.length === 0) {
-            tbodyPrediktif.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Tidak ada jadwal / Work Order yang tertunda.</td></tr>`;
+            tbodyPrediktif.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Tidak ada WO aktif.</td></tr>`;
         } else {
             listPending.slice(0, 10).forEach((item) => {
                 let badge = item.status === 'Scheduled' ? "bg-info text-dark" : "bg-warning text-dark";
+                let mObj = dbMaster.find(m => m.id_mesin === item.id_mesin);
+                let namaTampil = mObj && mObj.nama_mesin ? `${item.id_mesin} (${mObj.nama_mesin})` : item.id_mesin;
+
                 let row = `<tr>
-                        <td class="fw-bold">${String(item.tgl_rencana).substring(0,10)}</td>
-                        <td class="fw-bold text-primary">${item.id_mesin}</td>
+                        <td class="fw-bold">${formatTanggalPendek(item.tgl_rencana)}</td>
+                        <td class="fw-bold text-primary">${namaTampil}</td>
                         <td><span class="teks-ringkas">${item.jenis_pekerjaan}</span></td>
                         <td><span class="badge ${badge}">${item.status}</span></td>
                     </tr>`;
