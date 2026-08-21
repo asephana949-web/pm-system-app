@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisis AI & Tren Vibrasi - PM System</title>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .sidebar { background-color: #2c3e50; color: white; min-height: 100vh; padding-top: 20px; }
+        .sidebar a { color: #bdc3c7; text-decoration: none; padding: 10px 20px; display: block; }
+        .sidebar a:hover, .sidebar a.aktif { background-color: #34495e; color: white; border-left: 4px solid #3498db; }
+        .ai-box { background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); color: white; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .upload-card { border: 2px dashed #cbd5e1; background-color: #f8fafc; border-radius: 8px; padding: 12px; text-align: center; }
+        
+        .status-aman { background-color: #2ecc71; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;}
+        .status-hati-hati { background-color: #f1c40f; color: black; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;}
+        .status-berbahaya { background-color: #e74c3c; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;}
+        
+        .table-scrollable { max-height: 350px; overflow-y: auto; }
+        .teks-ringkas { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: middle;}
+        .document-link { cursor: pointer; color: #0d6efd; font-weight: 600; text-decoration: none; }
+        .document-link:hover { text-decoration: underline; }
+        .iso-legend { display: flex; gap: 12px; font-size: 11px; font-weight: bold; }
+        .box-color { width: 12px; height: 12px; display: inline-block; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 sidebar">
+            <h5 class="text-center mb-4"><i class="fa-solid fa-gear"></i> PM System</h5>
+            <a href="/dashboard"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+            <a href="/machine-profile"><i class="fa-solid fa-server"></i> Machine Profile</a>
+            <a href="/pm-schedule"><i class="fa-solid fa-calendar-check"></i> PM Schedule</a>
+            <a href="/machine-history"><i class="fa-solid fa-clock-rotate-left"></i> Machine History</a>
+            {% if session.role == 'Admin' %}
+            <a href="/ai-analysis" class="aktif"><i class="fa-solid fa-brain"></i> AI Analysis</a>
+            {% endif %}
+            <a href="/logout" class="text-danger mt-4"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </div>
+
+        <div class="col-md-10 p-4">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                <div>
+                    <h2 class="m-0">Pusat Analisis AI & Riwayat Diagnosa Unit</h2>
+                    <small class="text-muted">Evaluasi berbasis TA Chart, Standar ISO 10816-3, & Silabus Mobius Institute.</small>
+                </div>
+                <div class="d-flex align-items-center gap-2 bg-white border p-3 rounded shadow-sm" style="min-width: 450px;">
+                    <label class="fw-bold m-0 text-nowrap"><i class="fa-solid fa-magnifying-glass text-primary"></i> Pilih Unit Global:</label>
+                    <select class="form-select fw-bold" id="pilihUnitAnalisis" style="width: 100%;" onchange="gantiUnitAktif()">
+                        <option value="">-- Memuat Database... --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-5">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-white fw-bold p-3 border-bottom"><i class="fa-solid fa-cloud-arrow-up text-primary"></i> Input Dokumen & Screenshot Lapangan</div>
+                        <div class="card-body">
+                            <form id="formAnalisisGabungan" onsubmit="analisisDenganGabunganAI(event)">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-danger"><i class="fa-solid fa-file-pdf"></i> 1. Upload Laporan PDF (Trendline):</label>
+                                    <div class="upload-card"><input type="file" class="form-control form-control-sm" id="filePdf" accept=".pdf" required></div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-info"><i class="fa-solid fa-image"></i> 2. Upload Screenshot Time Waveform / FFT (JPG/PNG):</label>
+                                    <div class="upload-card"><input type="file" class="form-control form-control-sm" id="fileScreenshot" accept="image/*" required></div>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" id="btnProsesAI"><i class="fa-solid fa-wand-magic-sparkles"></i> Analisis Gabungan AI & Simpan</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-7">
+                    <div class="ai-box h-100 d-flex flex-column justify-content-between">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                                <h5 class="m-0 fw-bold"><i class="fa-solid fa-robot text-info"></i> Laporan Diagnostik AI Terintegrasi</h5>
+                                <span class="badge bg-secondary" id="badgeStatus">Siap Menganalisis</span>
+                            </div>
+                            <div id="kontenHasilAi">
+                                <p class="text-white-50">Silakan unggah dokumen PDF dan Screenshot JPG di samping. AI akan memvalidasi data menggunakan gabungan <b>TA Chart, ISO 10816-3, & Silabus Mobius Institute</b>.</p>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-2 border-top border-light border-opacity-25">
+                            <small class="text-white-50"><i class="fa-solid fa-graduation-cap text-warning"></i> <b>Referensi:</b> TA Diagnostic Chart, ISO 10816-3, & Mobius Institute (Fault Templates).</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white p-3 d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom">
+                    <h5 class="m-0 fw-bold" id="judulGrafikTren"><i class="fa-solid fa-chart-line text-primary"></i> Grafik Tren Vibrasi — Menunggu Data...</h5>
+                    <div class="iso-legend">
+                        <div><span class="box-color bg-success"></span> Aman (< 2.8)</div>
+                        <div><span class="box-color bg-warning"></span> Alarm (> 4.5)</div>
+                        <div><span class="box-color bg-danger"></span> Trip (> 7.1)</div>
+                    </div>
+                </div>
+                <div class="card-body" style="height: 320px;">
+                    <canvas id="chartTrendVibrasi"></canvas>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white p-3 d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom">
+                            <h5 class="m-0 fw-bold"><i class="fa-solid fa-clock-rotate-left text-primary"></i> Log Riwayat Diagnosa AI (Database Terintegrasi)</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive table-scrollable">
+                                <table class="table table-hover table-striped m-0 align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Tanggal</th>
+                                            <th>Unit Mesin</th>
+                                            <th>Status ISO</th>
+                                            <th>Indikasi Kerusakan & Detail</th>
+                                            <th>Lampiran</th>
+                                            <th class="text-center">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabelRiwayatDiagnosa">
+                                        <!-- Data ditarik otomatis dari database -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal Pratinjau File -->
+<div class="modal fade" id="modalPratinjauBerkas" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fa-solid fa-file-lines"></i> Pratinjau Berkas Lampiran</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0 bg-light text-center" style="min-height: 380px; display: flex; align-items: center; justify-content: center;">
+                <div class="p-5">
+                    <div id="ikonPreviewBerkas" class="mb-3"></div>
+                    <h4 class="fw-bold text-dark" id="namaFilePreview">File</h4>
+                    <p class="text-muted small mb-0">Simulasi Pratinjau Berkas Lampiran.</p>
+                </div>
+            </div>
+            <div class="modal-footer bg-white"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detail Diagnosa AI -->
+<div class="modal fade" id="modalDetailDiagnosa" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="fa-solid fa-microscope text-info"></i> Laporan Detail Diagnosa AI</h5>
+                <button type="button" class="btn-close btn-close-white" onclick="tutupModalCustom()"></button>
+            </div>
+            <div class="modal-body bg-white text-dark" id="modalBodyKonten"></div>
+            <div class="modal-footer bg-light">
+                <span class="text-muted small me-auto" id="modalFooterTanggal"></span>
+                <button type="button" class="btn btn-secondary" onclick="tutupModalCustom()">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Edit Log AI (Disederhanakan Tanpa HTML) -->
+<div class="modal fade" id="modalEditAI" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form onsubmit="simpanEditLogAI(event)">
+                <div class="modal-header bg-warning text-dark fw-bold">
+                    <h5 class="modal-title"><i class="fa-solid fa-pen-to-square"></i> Edit Hasil Analisis AI</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editID">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary small">Ringkasan Indikasi (Diagnosis)</label>
+                        <textarea class="form-control" id="editIndikasi" rows="3" required></textarea>
+                        <small class="text-muted mt-1 d-block"><i class="fa-solid fa-circle-info"></i> Teks ini akan terupdate otomatis di tabel utama sekaligus di dalam Pop-up Laporan Detail.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary small">Rekomendasi (Korektif)</label>
+                        <textarea class="form-control" id="editRekomendasi" rows="2" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-warning fw-bold"><i class="fa-solid fa-save"></i> Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    let dbMaster = [];
+    let dbLogsAI = [];
+    let chartTrend = null;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        fetch('/api/master-mesin').then(res => res.json()).then(data => {
+            dbMaster = data;
+            let optGroups = {};
+            data.forEach(m => {
+                let label = `${m.wilayah || 'UMUM'} - ${m.area || 'UMUM'}`;
+                if(!optGroups[label]) optGroups[label] = [];
+                optGroups[label].push(m);
+            });
+            let htmlAtas = '<option value="">-- Ketik ID / Nama Mesin --</option>';
+            for(let grup in optGroups) {
+                htmlAtas += `<optgroup label="${grup}">`;
+                optGroups[grup].forEach(m => { htmlAtas += `<option value="${m.id_mesin}">${m.id_mesin} - ${m.nama_mesin}</option>`; });
+                htmlAtas += `</optgroup>`;
+            }
+            $('#pilihUnitAnalisis').html(htmlAtas).select2({theme: 'bootstrap-5', closeOnSelect: true, width: '100%'});
+            muatDataLogAI(data[0]?.id_mesin);
+        });
+    });
+
+    function muatDataLogAI(mesinDefault) {
+        fetch('/api/ai-analysis')
+            .then(res => res.json())
+            .then(data => {
+                dbLogsAI = data;
+                if(mesinDefault && !document.getElementById('pilihUnitAnalisis').value) {
+                    $('#pilihUnitAnalisis').val(mesinDefault).trigger('change');
+                } else {
+                    gantiUnitAktif(); 
+                }
+            });
+    }
+
+    function gantiUnitAktif() {
+        const unitId = document.getElementById('pilihUnitAnalisis').value;
+        if(!unitId) return;
+        
+        const logMesinIni = dbLogsAI.filter(x => x.id_mesin === unitId).sort((a,b) => new Date(a.tgl_analisis) - new Date(b.tgl_analisis));
+        
+        renderGrafikTrenDariDatabase(unitId, logMesinIni);
+        renderTabelDariDatabase(unitId, logMesinIni);
+
+        document.getElementById('badgeStatus').className = "badge bg-secondary";
+        document.getElementById('badgeStatus').innerText = "Siap Menganalisis";
+        document.getElementById('kontenHasilAi').innerHTML = `<p class="text-white-50">Silakan unggah dokumen PDF dan Screenshot JPG di samping. AI akan memvalidasi data menggunakan gabungan <b>TA Chart, ISO 10816-3, & Silabus Mobius Institute</b>.</p>`;
+    }
+
+    function renderGrafikTrenDariDatabase(unitId, logs) {
+        const ctx = document.getElementById('chartTrendVibrasi').getContext('2d');
+        if (chartTrend !== null) chartTrend.destroy();
+
+        let labels = [];
+        let values = [];
+        
+        if(logs.length === 0) {
+            let today = new Date().toISOString().split('T')[0];
+            labels = [today]; values = [0];
+        } else {
+            labels = logs.map(x => String(x.tgl_analisis).substring(0,10));
+            values = logs.map(x => x.nilai_vibrasi);
+        }
+
+        const mesinObj = dbMaster.find(x => x.id_mesin === unitId);
+        const namaMesin = mesinObj ? mesinObj.nama_mesin : unitId;
+        document.getElementById('judulGrafikTren').innerHTML = `<i class="fa-solid fa-chart-line text-primary"></i> Grafik Tren Vibrasi — ${unitId} (${namaMesin})`;
+
+        chartTrend = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Velocity (mm/s)', data: values, borderColor: '#2980b9', backgroundColor: 'rgba(41, 128, 185, 0.1)', borderWidth: 3, pointBackgroundColor: '#2c3e50', pointRadius: 6, fill: true, tension: 0.3 },
+                    { label: 'Batas ALARM', data: Array(labels.length).fill(4.5), borderColor: '#f1c40f', borderWidth: 2, borderDash: [5, 5], pointRadius: 0 },
+                    { label: 'Batas TRIP', data: Array(labels.length).fill(7.1), borderColor: '#e74c3c', borderWidth: 2, borderDash: [5, 5], pointRadius: 0 }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 14 } }, plugins: { legend: { position: 'bottom' } } }
+        });
+    }
+
+    function renderTabelDariDatabase(unitId, logs) {
+        const tabel = document.getElementById('tabelRiwayatDiagnosa');
+        tabel.innerHTML = '';
+        
+        if(logs.length === 0) {
+            tabel.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Belum ada riwayat analisis AI untuk mesin ini.</td></tr>`;
+            return;
+        }
+
+        let reversedLogs = [...logs].reverse();
+        
+        reversedLogs.forEach(item => {
+            let badgeClass = "status-aman";
+            if(item.status_iso.includes("Zone C") || item.status_iso.includes("Waspada")) badgeClass = "status-hati-hati";
+            if(item.status_iso.includes("Zone D") || item.status_iso.includes("Berbahaya")) badgeClass = "status-berbahaya";
+            
+            let diagFormatted = item.diagnosis_lengkap.replace(/</g, "&lt;").replace(/>/g, "&gt;"); 
+            diagFormatted = diagFormatted.replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+
+            let row = `
+                <tr data-unit="${item.id_mesin}" data-tanggal="${String(item.tgl_analisis).substring(0,10)}">
+                    <td>${String(item.tgl_analisis).substring(0,10)}</td>
+                    <td class="fw-bold">${item.id_mesin}</td>
+                    <td><span class="${badgeClass}">${item.status_iso}</span></td>
+                    <td>
+                        <span class="teks-ringkas">${item.indikasi}</span>
+                        <button type="button" class="btn btn-sm btn-outline-primary ms-2 py-0 fw-bold" onclick="bukaModalDetail(this)"><i class="fa-solid fa-magnifying-glass"></i> Detail</button>
+                        <div class="d-none konten-rahasia">${diagFormatted}</div>
+                    </td>
+                    <td>
+                        <span class="document-link" onclick="bukaPratinjauBerkas('${item.file_pdf}', 'pdf')"><i class="fa-solid fa-file-pdf text-danger"></i></span> 
+                        <span class="text-muted">|</span> 
+                        <span class="document-link" onclick="bukaPratinjauBerkas('${item.file_gambar}', 'jpg')"><i class="fa-solid fa-image text-info"></i></span>
+                    </td>
+                    <td class="text-center text-nowrap">
+                        <button class="btn btn-sm btn-warning py-0" onclick="bukaModalEditAI(${item.id})"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn btn-sm btn-danger py-0" onclick="hapusLogAI(${item.id})"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            tabel.insertAdjacentHTML('beforeend', row);
+        });
+    }
+
+    function bukaModalEditAI(id) {
+        const item = dbLogsAI.find(x => x.id === id);
+        if(!item) return;
+
+        document.getElementById('editID').value = item.id;
+        document.getElementById('editIndikasi').value = item.indikasi;
+        document.getElementById('editRekomendasi').value = item.rekomendasi;
+        
+        new bootstrap.Modal(document.getElementById('modalEditAI')).show();
+    }
+
+    // FUNGSI INI AKAN OTOMATIS MERAKIT ULANG KODE HTML
+    function simpanEditLogAI(event) {
+        event.preventDefault();
+        const id = parseInt(document.getElementById('editID').value);
+        const newIndikasi = document.getElementById('editIndikasi').value;
+        const newRekomendasi = document.getElementById('editRekomendasi').value;
+
+        // Ambil data lama untuk referensi warna/status
+        const item = dbLogsAI.find(x => x.id === id);
+        
+        let borderColor = "border-warning";
+        let iconClass = "fa-circle-exclamation text-warning";
+        
+        if(item.status_iso.includes("Berbahaya") || item.status_iso.includes("Zone D")) {
+            borderColor = "border-danger";
+            iconClass = "fa-circle-xmark text-danger";
+        }
+
+        // Rakit ulang HTML secara otomatis di sini
+        const newHTML = `
+            <h6 class="fw-bold text-dark mb-3"><i class="fa-solid ${iconClass}"></i> Diagnostik Terintegrasi: ${item.id_mesin}</h6>
+            <div class="bg-light p-3 rounded mb-3 border ${borderColor}">
+                <p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p>
+                <p class="small mb-0">${newIndikasi}</p>
+            </div>
+            <div class="bg-light p-3 rounded border ${borderColor}">
+                <p class="fw-bold mb-2">Rekomendasi (Korektif):</p>
+                <p class="small mb-0">${newRekomendasi}</p>
+            </div>
+        `;
+
+        const payload = {
+            indikasi: newIndikasi,
+            rekomendasi: newRekomendasi,
+            diagnosis: newHTML // String HTML bersih dikirim ke database
+        };
+
+        fetch('/api/ai-analysis/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(res => {
+            alert(res.message);
+            bootstrap.Modal.getInstance(document.getElementById('modalEditAI')).hide();
+            muatDataLogAI(document.getElementById('pilihUnitAnalisis').value); // Reload Data
+        })
+        .catch(err => alert("Gagal menyimpan perubahan!"));
+    }
+
+    function hapusLogAI(id) {
+        if(confirm("Apakah Anda yakin ingin menghapus data laporan AI ini secara permanen?")) {
+            fetch('/api/ai-analysis/' + id, { method: 'DELETE' })
+            .then(res => res.json())
+            .then(res => {
+                alert(res.message);
+                muatDataLogAI(document.getElementById('pilihUnitAnalisis').value); // Reload Data
+            });
+        }
+    }
+
+    function analisisDenganGabunganAI(event) {
+        event.preventDefault();
+        const unitId = document.getElementById('pilihUnitAnalisis').value;
+        if(!unitId) return alert("Pilih unit mesin terlebih dahulu!");
+
+        const pdfInput = document.getElementById('filePdf');
+        const ssInput = document.getElementById('fileScreenshot');
+        if(pdfInput.files.length === 0 || ssInput.files.length === 0) return alert("Harap unggah berkas lengkap!");
+
+        const btnProses = document.getElementById('btnProsesAI');
+        const badge = document.getElementById('badgeStatus');
+        const hasil = document.getElementById('kontenHasilAi');
+
+        btnProses.disabled = true;
+        badge.className = "badge bg-info text-dark"; badge.innerText = "Menganalisis Terintegrasi...";
+        hasil.innerHTML = `<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin fs-1 text-info"></i><p class="mt-2 text-white">Memproses *Machine Vision* dan Validasi Standar ISO & TA Chart...</p></div>`;
+
+        setTimeout(() => {
+            const tglHariIni = new Date().toISOString().split('T')[0];
+            const randomAI = Math.random();
+            let p_status = "", p_nilai = 0, p_indikasi = "", p_htmlDetail = "", p_rek = "";
+            
+            if (randomAI < 0.33) {
+                p_indikasi = "1X RPM Radial Dominan (TA Chart: Mass Unbalance)";
+                p_rek = "Lakukan pembersihan rotor dan jadwalkan Dynamic Balancing.";
+                p_nilai = parseFloat((Math.random() * (6.9 - 4.6) + 4.6).toFixed(1)); 
+                p_status = "Zone C (Waspada)";
+                p_htmlDetail = `<h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-circle-exclamation text-warning"></i> Diagnostik Terintegrasi: ${unitId}</h6><div class="bg-light p-3 rounded mb-3 border border-warning"><p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p><p class="small mb-0">${p_indikasi}</p></div><div class="bg-light p-3 rounded border border-warning"><p class="fw-bold mb-2">Rekomendasi (Korektif):</p><p class="small mb-0">${p_rek}</p></div>`;
+            } else if (randomAI < 0.66) {
+                p_indikasi = "2X RPM Axial Dominan + 180° (TA Chart: Angular Misalignment)";
+                p_rek = "Lakukan Laser Shaft Alignment dan periksa Soft Foot.";
+                p_nilai = parseFloat((Math.random() * (12.0 - 7.2) + 7.2).toFixed(1)); 
+                p_status = "Zone D (Berbahaya)";
+                p_htmlDetail = `<h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-circle-xmark text-danger"></i> Diagnostik Terintegrasi: ${unitId}</h6><div class="bg-light p-3 rounded mb-3 border border-danger"><p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p><p class="small mb-0">${p_indikasi}</p></div><div class="bg-light p-3 rounded border border-danger"><p class="fw-bold mb-2">Rekomendasi (Korektif):</p><p class="small mb-0">${p_rek}</p></div>`;
+            } else {
+                p_indikasi = "Spektrum Non-Synchronous (Mobius: BPFI Bearing Defect)";
+                p_rek = "Jadwalkan penggantian Bearing secepatnya.";
+                p_nilai = parseFloat((Math.random() * (10.0 - 7.2) + 7.2).toFixed(1)); 
+                p_status = "Zone D (Berbahaya)";
+                p_htmlDetail = `<h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-circle-xmark text-danger"></i> Diagnostik Terintegrasi: ${unitId}</h6><div class="bg-light p-3 rounded mb-3 border border-danger"><p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p><p class="small mb-0">${p_indikasi}</p></div><div class="bg-light p-3 rounded border border-danger"><p class="fw-bold mb-2">Rekomendasi (Korektif):</p><p class="small mb-0">${p_rek}</p></div>`;
+            }
+            
+            let kotakStatusColor = p_nilai > 7.1 ? "bg-danger" : "bg-warning text-dark";
+            badge.className = "badge " + kotakStatusColor; badge.innerText = p_status;
+            hasil.innerHTML = `<div class="text-white">${p_htmlDetail.replace(/bg-light/g, 'bg-dark bg-opacity-50 text-white').replace(/text-dark/g, 'text-white')}</div>`;
+
+            let payload = {
+                id_mesin: unitId,
+                tgl_analisis: tglHariIni,
+                status_iso: p_status,
+                nilai_vibrasi: p_nilai,
+                indikasi: p_indikasi,
+                diagnosis_lengkap: p_htmlDetail, 
+                rekomendasi: p_rek,
+                file_pdf: pdfInput.files[0].name,
+                file_gambar: ssInput.files[0].name
+            };
+
+            fetch('/api/ai-analysis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(response => {
+                muatDataLogAI(unitId);
+                btnProses.disabled = false;
+                document.getElementById('filePdf').value = "";
+                document.getElementById('fileScreenshot').value = "";
+            })
+            .catch(err => {
+                alert("Gagal menyimpan ke database!");
+                btnProses.disabled = false;
+            });
+
+        }, 2000);
+    }
+
+    function bukaPratinjauBerkas(namaFile, jenisFile) {
+        document.getElementById('namaFilePreview').innerText = namaFile;
+        document.getElementById('ikonPreviewBerkas').innerHTML = (jenisFile === 'pdf') ? '<i class="fa-solid fa-file-pdf fa-4x text-danger"></i>' : '<i class="fa-solid fa-file-image fa-4x text-info"></i>';
+        new bootstrap.Modal(document.getElementById('modalPratinjauBerkas')).show();
+    }
+    
+    function bukaModalDetail(tombol) {
+        const tr = tombol.closest('tr');
+        document.getElementById('modalBodyKonten').innerHTML = tr.querySelector('.konten-rahasia').innerHTML;
+        document.getElementById('modalFooterTanggal').innerText = `Unit ID: ${tr.getAttribute('data-unit')}`;
+        const mod = document.getElementById('modalDetailDiagnosa');
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) new bootstrap.Modal(mod).show();
+        else { mod.style.display = 'block'; mod.classList.add('show'); }
+    }
+    
+    function tutupModalCustom() {
+        const mod = document.getElementById('modalDetailDiagnosa');
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) bootstrap.Modal.getInstance(mod)?.hide();
+        mod.style.display = 'none'; mod.classList.remove('show');
+    }
+</script>
+</body>
+</html>

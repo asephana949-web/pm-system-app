@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profil & Detail Mesin - PM System</title>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .sidebar { background-color: #2c3e50; color: white; min-height: 100vh; padding-top: 20px; }
+        .sidebar a { color: #bdc3c7; text-decoration: none; padding: 10px 20px; display: block; }
+        .sidebar a:hover, .sidebar a.aktif { background-color: #34495e; color: white; border-left: 4px solid #3498db; }
+        .kpi-card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #3498db; }
+        .kpi-title { font-size: 12px; color: #7f8c8d; text-transform: uppercase; font-weight: bold; }
+        .kpi-value { font-size: 22px; font-weight: bold; color: #2c3e50; margin-top: 5px; }
+        .spec-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+        .spec-label { color: #7f8c8d; font-weight: 600; }
+        .spec-val { color: #2c3e50; font-weight: bold; text-align: right; }
+        .table-scrollable { max-height: 400px; overflow-y: auto; }
+        .document-link { cursor: pointer; color: #0d6efd; font-weight: 600; text-decoration: none; }
+        .document-link:hover { text-decoration: underline; }
+        
+        .status-aman { background-color: #2ecc71; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;}
+        .status-hati-hati { background-color: #f1c40f; color: black; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;}
+        .status-berbahaya { background-color: #e74c3c; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;}
+        .teks-ringkas { max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: middle;}
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 sidebar">
+            <h5 class="text-center mb-4"><i class="fa-solid fa-gear"></i> PM System</h5>
+            <a href="/dashboard"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+            <a href="/machine-profile" class="aktif"><i class="fa-solid fa-server"></i> Machine Profile</a>
+            <a href="/pm-schedule"><i class="fa-solid fa-calendar-check"></i> PM Schedule</a>
+            <a href="/machine-history"><i class="fa-solid fa-clock-rotate-left"></i> Machine History</a>
+            {% if session.role == 'Admin' %}
+            <a href="/ai-analysis"><i class="fa-solid fa-brain"></i> AI Analysis</a>
+            {% endif %}
+            <a href="/logout" class="text-danger mt-4"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </div>
+
+        <div class="col-md-10 p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                <div>
+                    <h2 class="m-0">Profil & Detail Keandalan Aset</h2>
+                    <small class="text-muted">Spesifikasi teknis, Performa KPI (Dinamis), dan Log Kondisi AI.</small>
+                </div>
+                <div class="d-flex align-items-center gap-2 bg-white border p-3 rounded shadow-sm" style="min-width: 450px;">
+                    <label class="fw-bold m-0 text-nowrap"><i class="fa-solid fa-magnifying-glass text-primary"></i> Cari Unit:</label>
+                    <select class="form-select fw-bold" id="inputCariMesin" style="width: 100%;" onchange="muatDataMesin()">
+                        <option value="">-- Sedang memuat database... --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-3"><div class="kpi-card" id="cardStatusMesin" style="border-left-color: #2ecc71;"><div class="kpi-title">Status Operasional</div><div class="kpi-value" id="valStatus">Running (Normal)</div></div></div>
+                <div class="col-md-3"><div class="kpi-card" id="cardHealthMesin" style="border-left-color: #3498db;"><div class="kpi-title">Overall Health Index</div><div class="kpi-value text-primary" id="valHealth">100%</div></div></div>
+                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #9b59b6;"><div class="kpi-title">MTBF (Berdasarkan Rentang Tgl)</div><div class="kpi-value" id="valMTBF">Menghitung...</div></div></div>
+                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #e74c3c;"><div class="kpi-title">MTTR (Rata-rata Perbaikan)</div><div class="kpi-value" id="valMTTR">Menghitung...</div></div></div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card shadow-sm border-0 mb-3">
+                        <div class="card-header bg-dark text-white fw-bold p-3"><i class="fa-solid fa-clipboard-list"></i> Spesifikasi Teknis Mesin</div>
+                        <div class="card-body">
+                            <div class="spec-row"><span class="spec-label">Nama Aset</span><span class="spec-val text-primary" id="specNama">-</span></div>
+                            <div class="spec-row"><span class="spec-label">ID Tagging</span><span class="spec-val" id="specID">-</span></div>
+                            <div class="spec-row"><span class="spec-label">Wilayah Seksi</span><span class="spec-val" id="specWilayah">-</span></div>
+                            <div class="spec-row"><span class="spec-label">Lokasi / Area</span><span class="spec-val" id="specArea">-</span></div>
+                            <div class="spec-row align-items-center"><span class="spec-label">Kritisitas (Kategori)</span><span class="spec-val"><span class="badge bg-secondary" id="specKategori">-</span></span></div>
+                            <div class="spec-row mt-3 border-top pt-2"><span class="spec-label">Tipe Mesin</span><span class="spec-val" id="specTipe">Centrifugal / Induction</span></div>
+                            <div class="spec-row"><span class="spec-label">Tahun Instalasi</span><span class="spec-val" id="specTahun">2018</span></div>
+                            <div class="spec-row"><span class="spec-label">Daya Motor</span><span class="spec-val" id="specDaya">90 kW</span></div>
+                            <div class="spec-row"><span class="spec-label">Kecepatan (RPM)</span><span class="spec-val" id="specRPM">1480 RPM</span></div>
+                            <div class="spec-row"><span class="spec-label">Tipe Pelumas</span><span class="spec-val text-primary" id="specLube">Mobil SHC 626</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-8">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-white fw-bold p-3 border-bottom">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <span><i class="fa-solid fa-heart-pulse text-success"></i> Tren Kinerja & Health Index (%)</span>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-secondary fw-bold" onclick="filterCepat('1bulan')">1 Bulan</button>
+                                    <button type="button" class="btn btn-outline-secondary fw-bold" onclick="filterCepat('6bulan')">6 Bulan</button>
+                                    <button type="button" class="btn btn-outline-secondary fw-bold" onclick="filterCepat('12bulan')">12 Bulan</button>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mt-2 bg-light p-2 rounded">
+                                <span class="small fw-bold text-muted">Custom Tgl (Grafik & MTBF):</span>
+                                <input type="date" class="form-control form-control-sm w-auto" id="tglMulai">
+                                <span class="text-muted small">s/d</span>
+                                <input type="date" class="form-control form-control-sm w-auto" id="tglAkhir">
+                                <button class="btn btn-sm btn-primary fw-bold" onclick="filterGrafikTanggal()"><i class="fa-solid fa-filter"></i> Terapkan Filter</button>
+                            </div>
+                        </div>
+                        <div class="card-body" style="position: relative; height: 320px;">
+                            <canvas id="trenHealthChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-dark text-white fw-bold p-3 border-bottom d-flex justify-content-between align-items-center">
+                            <span><i class="fa-solid fa-database text-info"></i> Log Riwayat Kondisi Aktual (Database Terintegrasi AI)</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive table-scrollable">
+                                <table class="table table-hover table-striped m-0 align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Tanggal</th>
+                                            <th class="text-center">Health Index</th>
+                                            <th>Status ISO / Vibrasi</th>
+                                            <th>Indikasi & Diagnosis Terpusat</th>
+                                            <th>Rekomendasi Tindakan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabelStatusKondisi">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    let dbMasterProfil = [];
+    let dbRiwayatGlobal = [];
+    let mesinAktifSaatIni = "";
+    let dataKesehatanGlobal = []; 
+    let chartTrenHealth = null;
+
+    function parseTanggalAman(strTanggal) {
+        if (!strTanggal) return new Date().toISOString().split('T')[0];
+        try {
+            let d = new Date(strTanggal);
+            if (isNaN(d.getTime())) return strTanggal.substring(0, 10);
+            let yy = d.getFullYear();
+            let mm = String(d.getMonth() + 1).padStart(2, '0');
+            let dd = String(d.getDate()).padStart(2, '0');
+            return `${yy}-${mm}-${dd}`;
+        } catch(e) {
+            return String(strTanggal).substring(0, 10);
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        fetch('/api/riwayat').then(res => res.json()).then(data => { dbRiwayatGlobal = data; });
+
+        fetch('/api/master-mesin').then(res => res.json()).then(data => {
+            dbMasterProfil = data;
+            let optGroups = {};
+            data.forEach(m => {
+                let label = `${m.wilayah || 'UMUM'} - ${m.area || 'UMUM'}`;
+                if(!optGroups[label]) optGroups[label] = [];
+                optGroups[label].push(m);
+            });
+            let opsiHtml = '<option value="">-- Ketik ID atau Nama Mesin --</option>';
+            for(let grup in optGroups) {
+                opsiHtml += `<optgroup label="${grup}">`;
+                optGroups[grup].forEach(m => { opsiHtml += `<option value="${m.id_mesin}">${m.id_mesin} - ${m.nama_mesin}</option>`; });
+                opsiHtml += `</optgroup>`;
+            }
+            $('#inputCariMesin').html(opsiHtml).select2({ theme: 'bootstrap-5', closeOnSelect: true, width: '100%' });
+            if(data.length > 0) $('#inputCariMesin').val(data[0].id_mesin).trigger('change');
+        });
+    });
+
+    function muatDataMesin() {
+        const idTerpilih = document.getElementById('inputCariMesin').value;
+        if (!idTerpilih) return; 
+        mesinAktifSaatIni = idTerpilih;
+
+        const mesinObj = dbMasterProfil.find(m => m.id_mesin === idTerpilih);
+        if (!mesinObj) return;
+
+        let kat = mesinObj.kategori ? mesinObj.kategori : 'Desirable';
+        let wil = mesinObj.wilayah ? mesinObj.wilayah : '-';
+        let area = mesinObj.area ? mesinObj.area : 'UMUM';
+        if (area.toLowerCase().includes('stock prep')) wil = 'Seksi Kertas Unit 2';
+
+        let badgeKat = kat.toLowerCase() === 'vital' ? "bg-danger" : (kat.toLowerCase() === 'essential' ? "bg-warning text-dark" : "bg-info text-dark");
+        document.getElementById('specNama').innerText = mesinObj.nama_mesin;
+        document.getElementById('specID').innerText = mesinObj.id_mesin;
+        document.getElementById('specWilayah').innerText = wil; 
+        document.getElementById('specArea').innerText = area;
+        document.getElementById('specKategori').className = "badge " + badgeKat;
+        document.getElementById('specKategori').innerText = kat;
+
+        fetch(`/api/ai-analysis?id_mesin=${idTerpilih}`)
+            .then(res => res.json())
+            .then(logs => {
+                kalkulasiKesehatanDatabase(logs);
+            });
+    }
+
+    // FUNGSI MTBF & MTTR DINAMIS BERDASARKAN FILTER TANGGAL
+    function kalkulasiMTBFdanMTTR(idMesin, startDate, endDate) {
+        if(!dbRiwayatGlobal.length) return;
+        
+        const riwayatMesin = dbRiwayatGlobal.filter(r => r.nama_alat === idMesin);
+        
+        // Filter: Hanya perbaikan tipe 'Corrective' (Kerusakan), terlepas dari downtime atau tidak.
+        const dataKerusakan = riwayatMesin.filter(r => {
+            const tgl = new Date(r.tgl_eksekusi);
+            return r.tipe_pekerjaan === 'Corrective' && tgl >= startDate && tgl <= endDate;
+        });
+
+        let jumlahKerusakan = dataKerusakan.length;
+        let totalPerbaikanJam = 0;
+
+        dataKerusakan.forEach(r => {
+            totalPerbaikanJam += (parseFloat(r.durasi_jam) || 0);
+        });
+
+        // Hitung total jam operasional dari rentang tanggal
+        let diffTime = Math.abs(endDate - startDate);
+        let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays === 0) diffDays = 1; 
+        const totalJamRange = diffDays * 24;
+
+        let divMTTR = document.getElementById('valMTTR');
+        let divMTBF = document.getElementById('valMTBF');
+
+        if (jumlahKerusakan > 0) {
+            let mttr = totalPerbaikanJam / jumlahKerusakan;
+            let mtbf = (totalJamRange - totalPerbaikanJam) / jumlahKerusakan;
+            if(mtbf < 0) mtbf = 0;
+
+            divMTTR.innerText = mttr.toFixed(1) + " Jam";
+            divMTBF.innerText = Math.round(mtbf).toLocaleString() + " Jam";
+            
+            // Standar Warna MTTR
+            divMTTR.className = mttr < 4 ? "kpi-value text-success" : (mttr <= 8 ? "kpi-value text-warning" : "kpi-value text-danger");
+            // Standar Warna MTBF
+            divMTBF.className = mtbf > 720 ? "kpi-value text-success" : (mtbf >= 168 ? "kpi-value text-warning" : "kpi-value text-danger");
+        } else {
+            divMTTR.innerText = "0 Jam";
+            divMTBF.innerText = "> " + totalJamRange.toLocaleString() + " Jam";
+            divMTTR.className = "kpi-value text-success";
+            divMTBF.className = "kpi-value text-success";
+        }
+    }
+
+    function kalkulasiKesehatanDatabase(logs) {
+        dataKesehatanGlobal = [];
+        let valHealthSekarang = 100;
+        let statusText = "Running (Normal)"; let statusColor = "#2ecc71"; 
+
+        if (logs.length === 0) {
+            let today = new Date().toISOString().split('T')[0];
+            dataKesehatanGlobal.push({ tgl: today, val: 100, iso: "Belum Ada Analisis", indikasi: "Kondisi Default (Aman)", rekomendasi: "-" });
+        } else {
+            logs.forEach(item => {
+                let currentHealth = 100; 
+                if (item.status_iso.includes("Zone D") || item.status_iso.includes("Berbahaya")) currentHealth = 55;
+                else if (item.status_iso.includes("Zone C") || item.status_iso.includes("Waspada")) currentHealth = 78;
+                else if (item.status_iso.includes("Zone B")) currentHealth = 92;
+                
+                dataKesehatanGlobal.push({
+                    tgl: parseTanggalAman(item.tgl_analisis), 
+                    val: currentHealth,
+                    iso: `${item.status_iso} (${item.nilai_vibrasi} mm/s)`,
+                    indikasi: item.indikasi,
+                    rekomendasi: item.rekomendasi
+                });
+            });
+            valHealthSekarang = dataKesehatanGlobal[dataKesehatanGlobal.length - 1].val;
+        }
+
+        document.getElementById('valHealth').innerText = valHealthSekarang + "%";
+        if (valHealthSekarang < 60) { statusText = "Danger (Kritis)"; statusColor = "#e74c3c"; document.getElementById('valHealth').className = "kpi-value text-danger"; }
+        else if (valHealthSekarang < 85) { statusText = "Warning (Waspada)"; statusColor = "#f1c40f"; document.getElementById('valHealth').className = "kpi-value text-warning"; }
+        else { document.getElementById('valHealth').className = "kpi-value text-primary"; }
+
+        document.getElementById('valStatus').innerText = statusText;
+        document.getElementById('valStatus').style.color = statusColor;
+        document.getElementById('cardStatusMesin').style.borderLeftColor = statusColor;
+        
+        renderTabelStatusKondisi();
+        
+        // Panggil filter 1 tahun secara default
+        try { filterCepat('12bulan'); } catch (error) { console.error(error); }
+    }
+
+    function renderTabelStatusKondisi() {
+        const tabelBody = document.getElementById('tabelStatusKondisi');
+        tabelBody.innerHTML = '';
+        
+        let dataTerbalik = [...dataKesehatanGlobal].reverse();
+        dataTerbalik.forEach(item => {
+            let badgeClass = "status-aman"; let txtColor = "text-success"; let icon = '<i class="fa-solid fa-check"></i>';
+            if (item.val < 60) { badgeClass = "status-berbahaya"; txtColor = "text-danger"; icon = '<i class="fa-solid fa-xmark"></i>'; }
+            else if (item.val < 85) { badgeClass = "status-hati-hati"; txtColor = "text-warning text-dark"; icon = '<i class="fa-solid fa-triangle-exclamation"></i>'; }
+            
+            let row = `<tr>
+                    <td class="fw-bold">${item.tgl}</td>
+                    <td class="text-center"><span class="${badgeClass} fs-6">${item.val}%</span></td>
+                    <td><span class="badge bg-secondary">${item.iso}</span></td>
+                    <td><span class="${txtColor} fw-bold">${icon} ${item.indikasi}</span></td>
+                    <td class="fw-bold text-secondary small">${item.rekomendasi}</td>
+                </tr>`;
+            tabelBody.insertAdjacentHTML('beforeend', row);
+        });
+    }
+
+    // UPDATE: Memanggil kalkulasi MTBF di dalam filter cepat
+    function filterCepat(mode) {
+        if (dataKesehatanGlobal.length === 0) return;
+        
+        let endD = new Date(dataKesehatanGlobal[dataKesehatanGlobal.length - 1].tgl); 
+        if (isNaN(endD.getTime())) endD = new Date(); 
+
+        let startD = new Date(endD);
+        if (mode === '1bulan') { startD.setMonth(startD.getMonth() - 1); }
+        else if (mode === '6bulan') { startD.setMonth(startD.getMonth() - 6); }
+        else if (mode === '12bulan') { startD.setFullYear(startD.getFullYear() - 1); }
+        else { startD.setFullYear(startD.getFullYear() - 10); } 
+
+        document.getElementById('tglMulai').value = startD.toISOString().split('T')[0];
+        document.getElementById('tglAkhir').value = endD.toISOString().split('T')[0];
+        
+        // Panggil MTBF Calculator
+        kalkulasiMTBFdanMTTR(mesinAktifSaatIni, startD, endD);
+
+        const dataTersaring = dataKesehatanGlobal.filter(item => { 
+            const d = new Date(item.tgl); return d >= startD && d <= endD; 
+        });
+        
+        if(dataTersaring.length === 1 && dataTersaring[0].val === 100) {
+            let fakeDate = new Date(startD); fakeDate.setMonth(fakeDate.getMonth() - 1);
+            dataTersaring.unshift({ tgl: fakeDate.toISOString().split('T')[0], val: 100 });
+        }
+        
+        renderGrafikAkurat(dataTersaring, false);
+    }
+
+    // UPDATE: Memanggil kalkulasi MTBF di dalam filter custom tanggal
+    function filterGrafikTanggal() {
+        if (dataKesehatanGlobal.length === 0) return;
+        const tglMulai = new Date(document.getElementById('tglMulai').value);
+        const tglAkhir = new Date(document.getElementById('tglAkhir').value);
+        
+        // Panggil MTBF Calculator
+        kalkulasiMTBFdanMTTR(mesinAktifSaatIni, tglMulai, tglAkhir);
+
+        const dataTersaring = dataKesehatanGlobal.filter(item => { 
+            const d = new Date(item.tgl); return d >= tglMulai && d <= tglAkhir; 
+        });
+        
+        if (dataTersaring.length === 0) alert("Data kosong di rentang tanggal tersebut.");
+        else renderGrafikAkurat(dataTersaring, false);
+    }
+
+    function renderGrafikAkurat(dataSet, formatBulan = false) {
+        if (!dataSet || dataSet.length === 0) return;
+        
+        const labelTanggal = dataSet.map(d => d.tgl);
+        const dataAngka = dataSet.map(d => d.val);
+        const ctx = document.getElementById('trenHealthChart').getContext('2d');
+        if (chartTrenHealth !== null) chartTrenHealth.destroy();
+        
+        let gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(46, 204, 113, 0.4)'); gradient.addColorStop(1, 'rgba(231, 76, 60, 0.1)'); 
+        
+        chartTrenHealth = new Chart(ctx, {
+            type: 'line',
+            data: { labels: labelTanggal, datasets: [{ label: 'Health Index (%)', data: dataAngka, borderColor: '#2ecc71', backgroundColor: gradient, borderWidth: 3, pointBackgroundColor: '#27ae60', pointBorderColor: '#fff', pointRadius: 6, pointHoverRadius: 9, fill: true, tension: 0.1 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { display: false } } }
+        });
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riwayat Perbaikan - PM System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .sidebar { background-color: #2c3e50; color: white; min-height: 100vh; padding-top: 20px; }
+        .sidebar a { color: #bdc3c7; text-decoration: none; padding: 10px 20px; display: block; }
+        .sidebar a:hover, .sidebar a.aktif { background-color: #34495e; color: white; border-left: 4px solid #3498db; }
+        .kpi-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #3498db; }
+        .table-scrollable { max-height: 420px; overflow-y: auto; }
+        .badge-sparepart { background-color: #e2e8f0; color: #1e293b; font-size: 11px; padding: 3px 6px; border-radius: 4px; font-weight: 600; display: inline-block; margin: 2px 0; }
+        .select2-container .select2-selection--single { height: 32px; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 sidebar">
+            <h5 class="text-center mb-4"><i class="fa-solid fa-gear"></i> PM System</h5>
+            <a href="/dashboard"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+            <a href="/machine-profile"><i class="fa-solid fa-server"></i> Machine Profile</a>
+            <a href="/pm-schedule"><i class="fa-solid fa-calendar-check"></i> PM Schedule</a>
+            <a href="/machine-history" class="aktif"><i class="fa-solid fa-clock-rotate-left"></i> Machine History</a>
+            {% if session.role == 'Admin' %}
+            <a href="/ai-analysis"><i class="fa-solid fa-brain"></i> AI Analysis</a>
+            {% endif %}
+            <a href="/logout" class="text-danger mt-4"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </div>
+
+        <div class="col-md-10 p-4">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                <div>
+                    <h2 class="m-0"><i class="fa-solid fa-book-journal-whills text-primary"></i> Riwayat Perbaikan & Pemeliharaan</h2>
+                    <small class="text-muted">Pusat pencarian rekam medis pemeliharaan unit berdasar ID Mesin Master.</small>
+                </div>
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <button class="btn btn-primary btn-sm fw-bold py-2" data-bs-toggle="modal" data-bs-target="#modalTambahRiwayat">
+                        <i class="fa-solid fa-plus"></i> Tambah Riwayat Manual
+                    </button>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-4"><div class="kpi-card" style="border-left-color: #2ecc71;"><span class="text-muted small fw-bold text-uppercase">Total Rekam Medis</span><h3 class="fw-bold mt-1 mb-0" id="statTotal">0</h3></div></div>
+                <div class="col-md-4"><div class="kpi-card" style="border-left-color: #3498db;"><span class="text-muted small fw-bold text-uppercase">Preventive Maintenance</span><h3 class="fw-bold mt-1 mb-0" id="statPreventive">0</h3></div></div>
+                <div class="col-md-4"><div class="kpi-card" style="border-left-color: #e74c3c;"><span class="text-muted small fw-bold text-uppercase">Corrective & Overhaul</span><h3 class="fw-bold mt-1 mb-0" id="statCorrective">0</h3></div></div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4 p-3 bg-white">
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small mb-1"><i class="fa-solid fa-magnifying-glass text-primary"></i> Cari ID / Mesin:</label>
+                        <input type="text" class="form-control form-control-sm fw-bold" id="inputPencarianAlat" placeholder="Ketik pencarian..." oninput="filterRiwayatPerbaikan()">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold small mb-1"><i class="fa-solid fa-industry text-primary"></i> Filter Area:</label>
+                        <select class="form-select form-select-sm fw-bold" id="filterArea" onchange="filterRiwayatPerbaikan()">
+                            <option value="semua">Semua Area</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold small mb-1"><i class="fa-solid fa-filter"></i> Filter Tipe:</label>
+                        <select class="form-select form-select-sm fw-bold" id="filterTipePekerjaan" onchange="filterRiwayatPerbaikan()">
+                            <option value="semua">Semua Tipe</option>
+                            <option value="Preventive">Preventive</option>
+                            <option value="Corrective">Corrective</option>
+                            <option value="Overhaul">Overhaul</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold small mb-1">Dari Tanggal:</label>
+                        <input type="date" class="form-control form-control-sm fw-bold" id="filterTglMulai" onchange="filterRiwayatPerbaikan()">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold small mb-1">Sampai Tanggal:</label>
+                        <input type="date" class="form-control form-control-sm fw-bold" id="filterTglAkhir" onchange="filterRiwayatPerbaikan()">
+                    </div>
+                    <div class="col-md-1 pt-3">
+                        <button class="btn btn-outline-secondary btn-sm fw-bold w-100" onclick="resetFilter()"><i class="fa-solid fa-rotate-right"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white p-3 border-bottom">
+                    <h5 class="m-0 fw-bold"><i class="fa-solid fa-table-list text-primary"></i> Database Riwayat Pemeliharaan</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive table-scrollable">
+                        <table class="table table-hover table-striped m-0 align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>ID Mesin</th>
+                                    <th>Nama Mesin</th>
+                                    <th>Area</th>
+                                    <th>Tipe</th>
+                                    <th>Penyebab Kerusakan</th>
+                                    <th>Uraian Pekerjaan</th>
+                                    <th>Spare Part</th>
+                                    <th class="text-center">Total Durasi</th>
+                                    <th class="text-center">Downtime</th>
+                                    {% if session.role == 'Admin' %}
+                                    <th class="text-center">Aksi</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody id="tabelRiwayatList"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL TAMBAH RIWAYAT -->
+<div class="modal fade" id="modalTambahRiwayat" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-circle-plus"></i> Tambah Riwayat Manual</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formTambah" onsubmit="tambahDataRiwayat(event)">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-primary"><i class="fa-solid fa-search"></i> Unit Alat / Mesin (Pilih/Ketik dari Master Data):</label>
+                        <select class="form-select form-select-sm" id="tambahAlat" style="width: 100%;" required></select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Tanggal Pelaksanaan:</label>
+                            <input type="date" class="form-control form-control-sm" id="tambahTgl" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Tipe Pekerjaan:</label>
+                            <select class="form-select form-select-sm" id="tambahTipe">
+                                <option value="Preventive">Preventive</option>
+                                <option value="Corrective">Corrective</option>
+                                <option value="Overhaul">Overhaul</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Kondisi / Penyebab Kerusakan:</label>
+                        <textarea class="form-control form-control-sm" id="tambahPenyebab" rows="2" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Uraian Pekerjaan Aktual:</label>
+                        <textarea class="form-control form-control-sm" id="tambahUraian" rows="2" required></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Spare Part Digunakan:</label>
+                            <input type="text" class="form-control form-control-sm" id="tambahSparepart" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Total Waktu Pekerjaan (Jam):</label>
+                            <input type="number" step="0.1" class="form-control form-control-sm" id="tambahDurasi" required>
+                        </div>
+                    </div>
+                    
+                    <!-- BLOK DOWNTIME -->
+                    <div class="row mt-2 border-top pt-3 bg-light rounded">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small text-danger"><i class="fa-solid fa-power-off"></i> Mengakibatkan Downtime Mesin Utama?</label>
+                            <select class="form-select form-select-sm border-danger text-danger fw-bold" id="tambahIsDowntime" onchange="toggleDowntime('tambah')">
+                                <option value="Tidak">Tidak (Mesin Tetap Jalan)</option>
+                                <option value="Ya">Ya (Mesin Utama Berhenti)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3" id="divTambahDowntime" style="display: none;">
+                            <label class="form-label fw-bold small text-danger">Berapa Lama Downtime? (Jam):</label>
+                            <input type="number" step="0.1" class="form-control form-control-sm border-danger" id="tambahDurasiDowntime" value="0">
+                        </div>
+                    </div>
+
+                    <div class="d-grid mt-3">
+                        <button type="submit" class="btn btn-primary btn-sm fw-bold">Simpan Rekam Medis</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL EDIT RIWAYAT -->
+<div class="modal fade" id="modalEditRiwayat" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-pen-to-square"></i> Edit Rekam Medis</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEdit" onsubmit="simpanEditRiwayat(event)">
+                    <input type="hidden" id="editId">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-primary"><i class="fa-solid fa-search"></i> Unit Alat / Mesin:</label>
+                        <select class="form-select form-select-sm" id="editAlat" style="width: 100%;" required></select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Tanggal Pelaksanaan:</label>
+                            <input type="date" class="form-control form-control-sm" id="editTgl" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Tipe Pekerjaan:</label>
+                            <select class="form-select form-select-sm" id="editTipe">
+                                <option value="Preventive">Preventive</option>
+                                <option value="Corrective">Corrective</option>
+                                <option value="Overhaul">Overhaul</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Kondisi / Penyebab Kerusakan:</label>
+                        <textarea class="form-control form-control-sm" id="editPenyebab" rows="2" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Uraian Pekerjaan Aktual:</label>
+                        <textarea class="form-control form-control-sm" id="editUraian" rows="2" required></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Spare Part Digunakan:</label>
+                            <input type="text" class="form-control form-control-sm" id="editSparepart" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Total Waktu Pekerjaan (Jam):</label>
+                            <input type="number" step="0.1" class="form-control form-control-sm" id="editDurasi" required>
+                        </div>
+                    </div>
+
+                    <!-- BLOK DOWNTIME -->
+                    <div class="row mt-2 border-top pt-3 bg-light rounded">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small text-danger"><i class="fa-solid fa-power-off"></i> Mengakibatkan Downtime Mesin Utama?</label>
+                            <select class="form-select form-select-sm border-danger text-danger fw-bold" id="editIsDowntime" onchange="toggleDowntime('edit')">
+                                <option value="Tidak">Tidak (Mesin Tetap Jalan)</option>
+                                <option value="Ya">Ya (Mesin Utama Berhenti)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3" id="divEditDowntime" style="display: none;">
+                            <label class="form-label fw-bold small text-danger">Waktu Downtime (Jam):</label>
+                            <input type="number" step="0.1" class="form-control form-control-sm border-danger" id="editDurasiDowntime" value="0">
+                        </div>
+                    </div>
+
+                    <div class="d-grid mt-3">
+                        <button type="submit" class="btn btn-warning btn-sm fw-bold">Simpan Perubahan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    const userRole = "{{ session.role }}";
+    let dataRiwayatGlobal = []; 
+    let dataMasterGlobal = [];
+
+    // Tampilkan/Sembunyikan Kolom Downtime
+    function toggleDowntime(mode) {
+        const val = document.getElementById(mode + 'IsDowntime').value;
+        const div = document.getElementById('div' + (mode === 'tambah' ? 'Tambah' : 'Edit') + 'Downtime');
+        if (val === 'Ya') {
+            div.style.display = 'block';
+        } else {
+            div.style.display = 'none';
+            document.getElementById(mode + 'DurasiDowntime').value = 0;
+        }
+    }
+
+    function populateDropdowns(data) {
+        let optGroups = {};
+        let uniqueAreas = new Set();
+        data.forEach(m => {
+            let namaArea = m.area || 'Umum';
+            uniqueAreas.add(namaArea);
+            if(!optGroups[namaArea]) optGroups[namaArea] = [];
+            optGroups[namaArea].push(m);
+        });
+
+        let opsiHtml = '<option value="">-- Ketik ID atau Nama Mesin --</option>';
+        for(let area in optGroups) {
+            opsiHtml += `<optgroup label="${area}">`;
+            optGroups[area].forEach(m => { opsiHtml += `<option value="${m.id_mesin}">${m.id_mesin} - ${m.nama_mesin}</option>`; });
+            opsiHtml += `</optgroup>`;
+        }
+        $('#tambahAlat, #editAlat').html(opsiHtml);
+        $('#tambahAlat').select2({ theme: 'bootstrap-5', dropdownParent: $('#modalTambahRiwayat') });
+        $('#editAlat').select2({ theme: 'bootstrap-5', dropdownParent: $('#modalEditRiwayat') });
+
+        let filterAreaHtml = '<option value="semua">Semua Area</option>';
+        [...uniqueAreas].sort().forEach(a => {
+            filterAreaHtml += `<option value="${a.toLowerCase()}">${a}</option>`;
+        });
+        $('#filterArea').html(filterAreaHtml);
+    }
+
+    function loadRiwayat() {
+        fetch('/api/riwayat')
+            .then(res => res.json())
+            .then(data => {
+                dataRiwayatGlobal = data; 
+                let html = '';
+                if (data.length === 0) {
+                    html = `<tr><td colspan="11" class="text-center text-muted">Belum ada riwayat perbaikan di database.</td></tr>`;
+                } else {
+                    data.forEach(item => {
+                        let badgeClass = "bg-success";
+                        if(item.tipe_pekerjaan === 'Corrective') badgeClass = "bg-danger";
+                        if(item.tipe_pekerjaan === 'Overhaul') badgeClass = "bg-dark";
+
+                        let tglTampil = '-';
+                        if (item.tgl_eksekusi) {
+                            let d = new Date(item.tgl_eksekusi);
+                            if (!isNaN(d)) tglTampil = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                            else tglTampil = item.tgl_eksekusi; 
+                        }
+
+                        let actionButton = '';
+                        if (userRole === 'Admin') {
+                            actionButton = `
+                                <td class="text-center text-nowrap">
+                                    <button class="btn btn-sm btn-outline-warning py-0 px-2 me-1" onclick="bukaModalEdit(${item.id})" title="Edit Data"><i class="fa-solid fa-pen-to-square"></i></button>
+                                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="hapusRiwayat(${item.id})" title="Hapus Permanen"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            `;
+                        }
+
+                        let mesinMstr = dataMasterGlobal.find(m => m.id_mesin === item.nama_alat); 
+                        let namaTampil = mesinMstr ? mesinMstr.nama_mesin : item.nama_alat;
+                        let areaTampil = mesinMstr ? mesinMstr.area : '-';
+                        
+                        // Menentukan Angka dan Warna Downtime
+                        let durasiKerja = item.durasi_jam || '0';
+                        let nilaiDowntime = (item.is_downtime === 'Ya') ? (item.downtime_jam || '0') : '0';
+                        let warnaDowntime = (item.is_downtime === 'Ya') ? 'bg-danger' : 'bg-success';
+
+                        html += `
+                            <tr data-tipe="${item.tipe_pekerjaan}" data-tgl="${tglTampil}" data-area="${areaTampil.toLowerCase()}">
+                                <td class="fw-bold">${tglTampil}</td>
+                                <td class="text-primary fw-bold text-nowrap">${item.nama_alat}</td>
+                                <td class="fw-bold">${namaTampil}</td>
+                                <td><span class="badge bg-secondary">${areaTampil}</span></td>
+                                <td><span class="badge ${badgeClass}">${item.tipe_pekerjaan}</span></td>
+                                <td>${item.penyebab_kerusakan}</td>
+                                <td>${item.uraian_pekerjaan}</td>
+                                <td><span class="badge-sparepart"><i class="fa-solid fa-box text-warning"></i> ${item.sparepart_terpakai}</span></td>
+                                <td class="text-center"><span class="badge bg-secondary">${durasiKerja} Jam</span></td>
+                                <td class="text-center"><span class="badge ${warnaDowntime}">${nilaiDowntime} Jam</span></td>
+                                ${actionButton}
+                            </tr>
+                        `;
+                    });
+                }
+                document.getElementById('tabelRiwayatList').innerHTML = html;
+                hitungStatistik();
+            });
+    }
+
+    function filterRiwayatPerbaikan() {
+        const keyword = document.getElementById('inputPencarianAlat').value.toLowerCase();
+        const areaFilter = document.getElementById('filterArea').value.toLowerCase();
+        const tipeFilter = document.getElementById('filterTipePekerjaan').value;
+        const startDate = document.getElementById('filterTglMulai').value;
+        const endDate = document.getElementById('filterTglAkhir').value;
+        
+        document.querySelectorAll('#tabelRiwayatList tr').forEach(row => {
+            if(!row.hasAttribute('data-tipe')) return;
+            const textBaris = row.innerText.toLowerCase();
+            const tipeBaris = row.getAttribute('data-tipe');
+            const areaBaris = row.getAttribute('data-area');
+            const tglBaris = row.getAttribute('data-tgl');
+
+            const cKey = textBaris.includes(keyword);
+            const cArea = (areaFilter === 'semua' || areaBaris === areaFilter);
+            const cTipe = (tipeFilter === 'semua' || tipeBaris === tipeFilter);
+            let cTgl = true;
+            if (startDate && tglBaris < startDate) cTgl = false;
+            if (endDate && tglBaris > endDate) cTgl = false;
+
+            row.style.display = (cKey && cArea && cTipe && cTgl) ? '' : 'none';
+        });
+        hitungStatistik();
+    }
+
+    function resetFilter() {
+        document.getElementById('filterTglMulai').value = '';
+        document.getElementById('filterTglAkhir').value = '';
+        document.getElementById('inputPencarianAlat').value = '';
+        document.getElementById('filterArea').value = 'semua';
+        document.getElementById('filterTipePekerjaan').value = 'semua';
+        filterRiwayatPerbaikan();
+    }
+
+    function tambahDataRiwayat(event) {
+        event.preventDefault();
+        const dataInput = {
+            alat: $('#tambahAlat').val(), 
+            tgl: document.getElementById('tambahTgl').value,
+            tipe: document.getElementById('tambahTipe').value,
+            penyebab: document.getElementById('tambahPenyebab').value,
+            uraian: document.getElementById('tambahUraian').value,
+            sparepart: document.getElementById('tambahSparepart').value,
+            durasi: document.getElementById('tambahDurasi').value,
+            is_downtime: document.getElementById('tambahIsDowntime').value,
+            downtime_jam: document.getElementById('tambahDurasiDowntime').value
+        };
+        
+        fetch('/api/riwayat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataInput) })
+        .then(res => res.json()).then(res => { 
+            alert(res.message); 
+            bootstrap.Modal.getInstance(document.getElementById('modalTambahRiwayat')).hide(); 
+            document.getElementById('formTambah').reset(); $('#tambahAlat').val('').trigger('change');
+            toggleDowntime('tambah');
+            loadRiwayat(); 
+        });
+    }
+
+    function bukaModalEdit(id) {
+        const item = dataRiwayatGlobal.find(x => x.id === id);
+        if(!item) return;
+        let tglTampil = '';
+        if (item.tgl_eksekusi) {
+            let d = new Date(item.tgl_eksekusi);
+            if (!isNaN(d)) tglTampil = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        document.getElementById('editId').value = item.id;
+        $('#editAlat').val(item.nama_alat).trigger('change');
+        document.getElementById('editTgl').value = tglTampil;
+        document.getElementById('editTipe').value = item.tipe_pekerjaan;
+        document.getElementById('editPenyebab').value = item.penyebab_kerusakan;
+        document.getElementById('editUraian').value = item.uraian_pekerjaan;
+        document.getElementById('editSparepart').value = item.sparepart_terpakai;
+        document.getElementById('editDurasi').value = item.durasi_jam;
+        
+        document.getElementById('editIsDowntime').value = item.is_downtime || 'Tidak';
+        document.getElementById('editDurasiDowntime').value = item.downtime_jam || 0;
+        toggleDowntime('edit');
+
+        new bootstrap.Modal(document.getElementById('modalEditRiwayat')).show();
+    }
+
+    function simpanEditRiwayat(event) {
+        event.preventDefault();
+        const dataInput = {
+            alat: $('#editAlat').val(), 
+            tgl: document.getElementById('editTgl').value,
+            tipe: document.getElementById('editTipe').value,
+            penyebab: document.getElementById('editPenyebab').value,
+            uraian: document.getElementById('editUraian').value,
+            sparepart: document.getElementById('editSparepart').value,
+            durasi: document.getElementById('editDurasi').value,
+            is_downtime: document.getElementById('editIsDowntime').value,
+            downtime_jam: document.getElementById('editDurasiDowntime').value
+        };
+        fetch('/api/riwayat/' + document.getElementById('editId').value, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataInput) })
+        .then(res => res.json()).then(res => { 
+            alert(res.message); 
+            bootstrap.Modal.getInstance(document.getElementById('modalEditRiwayat')).hide(); 
+            loadRiwayat(); 
+        });
+    }
+
+    function hapusRiwayat(id) {
+        if(confirm("Apakah Anda yakin ingin menghapus catatan riwayat perbaikan ini permanen?")) {
+            fetch('/api/riwayat/' + id, { method: 'DELETE' }).then(res => res.json()).then(res => { alert(res.message); loadRiwayat(); });
+        }
+    }
+
+    function hitungStatistik() {
+        let total = 0, preventive = 0, corrective = 0;
+        document.querySelectorAll('#tabelRiwayatList tr').forEach(row => {
+            if (row.style.display !== 'none' && row.hasAttribute('data-tipe')) {
+                total++;
+                const tipe = row.getAttribute('data-tipe');
+                if(tipe === 'Preventive') preventive++;
+                if(tipe === 'Corrective' || tipe === 'Overhaul') corrective++;
+            }
+        });
+        document.getElementById('statTotal').innerText = total;
+        document.getElementById('statPreventive').innerText = preventive;
+        document.getElementById('statCorrective').innerText = corrective;
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        fetch('/api/master-mesin')
+        .then(res => res.json())
+        .then(data => {
+            dataMasterGlobal = data;
+            populateDropdowns(data); 
+            loadRiwayat(); 
+        }).catch(err => console.error("Error API Master:", err));
+    });
+</script>
+
+</body>
+</html>

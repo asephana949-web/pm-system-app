@@ -1,0 +1,263 @@
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask_cors import CORS
+import pymysql
+
+app = Flask(__name__)
+app.secret_key = 'kunci_rahasia_sangat_aman'
+CORS(app)
+
+DB_CONFIG = {
+    'host': 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
+    'port': 4000,
+    'user': '4VXEw9XhvX4uvwp.root',
+    'password': 'hSNLRRYkNh6WdA3m',
+    'database': 'db_pm_system',
+    'ssl': {
+        'ssl_verify_cert': True,
+        'ssl_verify_identity': True
+    },
+    'cursorclass': pymysql.cursors.DictCursor
+}
+
+def get_db_connection():
+    return pymysql.connect(**DB_CONFIG)
+
+# ==========================================
+# ROUTE HALAMAN & LOGIN
+# ==========================================
+@app.route('/', methods=['GET'])
+def index():
+    if 'loggedin' in session: return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT * FROM users WHERE username=%s AND password=%s", (username, password))
+                user = cursor.fetchone()
+                if user:
+                    session['loggedin'] = True
+                    session['username'] = user['username']
+                    session['role'] = user['role']
+                    return redirect(url_for('dashboard'))
+                else:
+                    return render_template('login.html', error="Username atau Password salah!")
+        finally:
+            conn.close()
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+@app.route('/dashboard')
+def dashboard():
+    if 'loggedin' not in session: return redirect(url_for('login'))
+    return render_template('dashboard.html', username=session['username'], role=session['role'])
+
+@app.route('/machine-profile')
+def machine_profile():
+    if 'loggedin' not in session: return redirect(url_for('login'))
+    return render_template('machine_profile.html')
+
+@app.route('/pm-schedule')
+def pm_schedule():
+    if 'loggedin' not in session: return redirect(url_for('login'))
+    return render_template('pm_schedule.html')
+
+@app.route('/machine-history')
+def machine_history():
+    if 'loggedin' not in session: return redirect(url_for('login'))
+    return render_template('machine_history.html')
+
+@app.route('/ai-analysis')
+def ai_analysis():
+    if 'loggedin' not in session: return redirect(url_for('login'))
+    if session['role'] != 'Admin':
+        return "Akses Ditolak!"
+    return render_template('ai_analysis.html')
+
+# ==========================================
+# API: MASTER MESIN
+# ==========================================
+@app.route('/api/master-mesin', methods=['GET'])
+def get_master_mesin():
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM master_mesin ORDER BY area, id_mesin")
+            return jsonify(cursor.fetchall())
+    finally:
+        conn.close()
+
+# ==========================================
+# API: JADWAL PM 
+# ==========================================
+@app.route('/api/jadwal', methods=['GET', 'POST'])
+def handle_jadwal():
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            if request.method == 'GET':
+                cursor.execute("SELECT * FROM jadwal_pm ORDER BY id DESC")
+                return jsonify(cursor.fetchall())
+            elif request.method == 'POST':
+                if 'loggedin' not in session: return jsonify({"error": "Belum login"}), 403
+                data = request.json
+                sql = """INSERT INTO jadwal_pm (no_task, id_mesin, area, jenis_pekerjaan, tgl_rencana, periode, status, dibuat_oleh) 
+                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
+                cursor.execute(sql, (data.get('no_task'), data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tgl_rencana'), data.get('periode'), 'Scheduled', session['username']))
+                conn.commit()
+                return jsonify({"status": "success", "message": "Jadwal berhasil ditambahkan!"})
+    finally:
+        conn.close()
+
+@app.route('/api/jadwal/<int:id>/selesai', methods=['PUT'])
+def selesaikan_jadwal(id):
+    if 'loggedin' not in session: return jsonify({"error": "Belum login"}), 403
+    data = request.json
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM jadwal_pm WHERE id=%s", (id,))
+            jadwal = cursor.fetchone()
+            if not jadwal: return jsonify({"status": "error", "message": "Jadwal tidak ditemukan!"}), 404
+
+            cursor.execute("UPDATE jadwal_pm SET status='Completed' WHERE id=%s", (id,))
+            sql_history = """INSERT INTO riwayat_perbaikan (tgl_eksekusi, nama_alat, tipe_pekerjaan, penyebab_kerusakan, uraian_pekerjaan, sparepart_terpakai, durasi_jam, dibuat_oleh, is_downtime, downtime_jam) 
+                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+            cursor.execute(sql_history, (data.get('tgl_eksekusi'), jadwal['id_mesin'], 'Preventive', data.get('penyebab'), data.get('uraian'), data.get('sparepart'), data.get('durasi'), session['username'], 'Tidak', 0))
+            conn.commit()
+            return jsonify({"status": "success", "message": "Pekerjaan selesai & masuk ke History!"})
+    finally:
+        conn.close()
+
+@app.route('/api/jadwal/<int:id>', methods=['PUT', 'DELETE'])
+def manage_jadwal(id):
+    if session.get('role') != 'Admin': return jsonify({"status": "error", "message": "Akses Ditolak!"}), 403
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            if request.method == 'PUT':
+                data = request.json
+                sql = """UPDATE jadwal_pm SET no_task=%s, id_mesin=%s, area=%s, jenis_pekerjaan=%s, tgl_rencana=%s, periode=%s, status=%s WHERE id=%s"""
+                cursor.execute(sql, (data.get('no_task'), data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tgl_rencana'), data.get('periode'), data.get('status'), id))
+                pesan = "Data jadwal diubah!"
+            elif request.method == 'DELETE':
+                cursor.execute("DELETE FROM jadwal_pm WHERE id = %s", (id,))
+                pesan = "Jadwal dihapus!"
+            conn.commit()
+            return jsonify({"status": "success", "message": pesan})
+    finally:
+        conn.close()
+
+# ==========================================
+# API: RIWAYAT PERBAIKAN
+# ==========================================
+@app.route('/api/riwayat', methods=['GET', 'POST'])
+def manage_riwayat_all():
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            if request.method == 'GET':
+                cursor.execute("SELECT * FROM riwayat_perbaikan ORDER BY id DESC")
+                return jsonify(cursor.fetchall())
+            elif request.method == 'POST':
+                if 'loggedin' not in session: return jsonify({"error": "Belum login"}), 403
+                data = request.json
+                
+                is_dt = data.get('is_downtime', 'Tidak')
+                dt_jam = data.get('downtime_jam', 0)
+                if not dt_jam or str(dt_jam).strip() == '': dt_jam = 0
+                    
+                sql = """INSERT INTO riwayat_perbaikan (tgl_eksekusi, nama_alat, tipe_pekerjaan, penyebab_kerusakan, uraian_pekerjaan, sparepart_terpakai, durasi_jam, dibuat_oleh, is_downtime, downtime_jam) 
+                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+                cursor.execute(sql, (data.get('tgl'), data.get('alat'), data.get('tipe'), data.get('penyebab'), data.get('uraian'), data.get('sparepart'), data.get('durasi'), session['username'], is_dt, dt_jam))
+                conn.commit()
+                return jsonify({"status": "success", "message": "Riwayat berhasil disimpan!"})
+    finally:
+        conn.close()
+
+@app.route('/api/riwayat/<int:id>', methods=['PUT', 'DELETE'])
+def manage_riwayat_id(id):
+    if session.get('role') != 'Admin': return jsonify({"status": "error", "message": "Akses Ditolak!"}), 403
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            if request.method == 'PUT':
+                data = request.json
+                is_dt = data.get('is_downtime', 'Tidak')
+                dt_jam = data.get('downtime_jam', 0)
+                if not dt_jam or str(dt_jam).strip() == '': dt_jam = 0
+                    
+                sql = """UPDATE riwayat_perbaikan SET tgl_eksekusi=%s, nama_alat=%s, tipe_pekerjaan=%s, penyebab_kerusakan=%s, uraian_pekerjaan=%s, sparepart_terpakai=%s, durasi_jam=%s, is_downtime=%s, downtime_jam=%s WHERE id=%s"""
+                cursor.execute(sql, (data.get('tgl'), data.get('alat'), data.get('tipe'), data.get('penyebab'), data.get('uraian'), data.get('sparepart'), data.get('durasi'), is_dt, dt_jam, id))
+                pesan = "Data riwayat diubah!"
+            elif request.method == 'DELETE':
+                cursor.execute("DELETE FROM riwayat_perbaikan WHERE id = %s", (id,))
+                pesan = "Riwayat dihapus!"
+            conn.commit()
+            return jsonify({"status": "success", "message": pesan})
+    finally:
+        conn.close()
+
+# ==========================================
+# API BARU: LOG AI ANALYSIS
+# ==========================================
+@app.route('/api/ai-analysis', methods=['GET', 'POST'])
+def handle_ai_analysis():
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            if request.method == 'GET':
+                # Jika diminta ID tertentu, kirimkan khusus ID itu. Jika tidak, kirim semua.
+                id_mesin = request.args.get('id_mesin')
+                if id_mesin:
+                    cursor.execute("SELECT * FROM log_ai_analysis WHERE id_mesin = %s ORDER BY tgl_analisis ASC", (id_mesin,))
+                else:
+                    cursor.execute("SELECT * FROM log_ai_analysis ORDER BY tgl_analisis ASC")
+                return jsonify(cursor.fetchall())
+            
+            elif request.method == 'POST':
+                if 'loggedin' not in session: return jsonify({"error": "Belum login"}), 403
+                data = request.json
+                sql = """INSERT INTO log_ai_analysis (id_mesin, tgl_analisis, status_iso, nilai_vibrasi, indikasi, diagnosis_lengkap, rekomendasi, file_pdf, file_gambar) 
+                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+                cursor.execute(sql, (
+                    data.get('id_mesin'), data.get('tgl_analisis'), data.get('status_iso'), 
+                    data.get('nilai_vibrasi'), data.get('indikasi'), data.get('diagnosis_lengkap'), 
+                    data.get('rekomendasi'), data.get('file_pdf'), data.get('file_gambar')
+                ))
+                conn.commit()
+                return jsonify({"status": "success", "message": "Log Analisis AI berhasil disimpan secara permanen!"})
+    finally:
+        conn.close()
+@app.route('/api/ai-analysis/<int:id>', methods=['PUT', 'DELETE'])
+def manage_ai_analysis_id(id):
+    if session.get('role') != 'Admin': return jsonify({"status": "error", "message": "Akses Ditolak!"}), 403
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            if request.method == 'PUT':
+                data = request.json
+                sql = """UPDATE log_ai_analysis 
+                         SET indikasi=%s, diagnosis_lengkap=%s, rekomendasi=%s 
+                         WHERE id=%s"""
+                cursor.execute(sql, (data.get('indikasi'), data.get('diagnosis'), data.get('rekomendasi'), id))
+                pesan = "Data Log Diagnosa AI berhasil diperbarui!"
+            elif request.method == 'DELETE':
+                cursor.execute("DELETE FROM log_ai_analysis WHERE id = %s", (id,))
+                pesan = "Data Log AI berhasil dihapus permanen!"
+            conn.commit()
+            return jsonify({"status": "success", "message": pesan})
+    finally:
+        conn.close()
+if __name__ == '__main__':
+    print("🚀 Server Backend PM System Berjalan di: http://127.0.0.1:5000")
+    app.run(debug=True, port=5000)

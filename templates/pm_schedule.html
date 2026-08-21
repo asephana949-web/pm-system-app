@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jadwal Preventive Maintenance - PM System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .sidebar { background-color: #2c3e50; color: white; min-height: 100vh; padding-top: 20px; }
+        .sidebar a { color: #bdc3c7; text-decoration: none; padding: 10px 20px; display: block; }
+        .sidebar a:hover, .sidebar a.aktif { background-color: #34495e; color: white; border-left: 4px solid #3498db; }
+        .kpi-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #3498db; }
+        .table-scrollable { max-height: 400px; overflow-y: auto; }
+        .select2-container .select2-selection--single { height: 32px; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 sidebar">
+            <h5 class="text-center mb-4"><i class="fa-solid fa-gear"></i> PM System</h5>
+            <a href="/dashboard"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+            <a href="/machine-profile"><i class="fa-solid fa-server"></i> Machine Profile</a>
+            <a href="/pm-schedule" class="aktif"><i class="fa-solid fa-calendar-check"></i> PM Schedule</a>
+            <a href="/machine-history"><i class="fa-solid fa-clock-rotate-left"></i> Machine History</a>
+            {% if session.role == 'Admin' %}
+            <a href="/ai-analysis"><i class="fa-solid fa-brain"></i> AI Analysis</a>
+            {% endif %}
+            <a href="/logout" class="text-danger mt-4"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </div>
+
+        <div class="col-md-10 p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                <div>
+                    <h2 class="m-0"><i class="fa-solid fa-calendar-check text-primary"></i> Jadwal & Compliance Preventive Maintenance</h2>
+                    <small class="text-muted">Pantau kepatuhan jadwal PM, filter dinamis, dan riwayat penundaan tugas.</small>
+                </div>
+                <div>
+                    <button class="btn btn-primary btn-sm fw-bold py-2" data-bs-toggle="modal" data-bs-target="#modalTambahJadwal">
+                        <i class="fa-solid fa-plus"></i> Tambah Rencana PM
+                    </button>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #2ecc71;"><span class="text-muted small fw-bold text-uppercase">PM Compliance Rate</span><h3 class="fw-bold mt-1 mb-0 text-success" id="valCompliance">0%</h3></div></div>
+                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #3498db;"><span class="text-muted small fw-bold text-uppercase">Total Rencana PM</span><h3 class="fw-bold mt-1 mb-0" id="valTotalJadwal">0</h3></div></div>
+                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #e74c3c;"><span class="text-muted small fw-bold text-uppercase">Terlambat (Overdue)</span><h3 class="fw-bold mt-1 mb-0 text-danger" id="valOverdue">0</h3></div></div>
+                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #f39c12;"><span class="text-muted small fw-bold text-uppercase">Selesai (Completed)</span><h3 class="fw-bold mt-1 mb-0 text-primary" id="valCompleted">0</h3></div></div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4 p-3 bg-white">
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small mb-1"><i class="fa-solid fa-magnifying-glass text-primary"></i> Cari ID / Nama Mesin:</label>
+                        <input type="text" class="form-control form-control-sm fw-bold" id="inputPencarianAlat" placeholder="Ketik kata kunci..." oninput="filterDataPM()">
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold small mb-1"><i class="fa-solid fa-industry text-primary"></i> Filter Area:</label>
+                        <select class="form-select form-select-sm fw-bold" id="filterArea" onchange="filterDataPM()">
+                            <option value="semua">Semua Area</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold small mb-1">Dari Tgl Rencana:</label>
+                        <input type="date" class="form-control form-control-sm fw-bold" id="filterTglMulai" onchange="filterDataPM()">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold small mb-1">Sampai Tanggal:</label>
+                        <input type="date" class="form-control form-control-sm fw-bold" id="filterTglAkhir" onchange="filterDataPM()">
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold small mb-1">Status:</label>
+                        <select class="form-select form-select-sm fw-bold" id="filterStatusJadwal" onchange="filterDataPM()">
+                            <option value="semua">Semua Status</option>
+                            <option value="Scheduled">Scheduled</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Overdue">Overdue</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-1 pt-3">
+                        <button class="btn btn-outline-secondary btn-sm fw-bold w-100" onclick="resetFilter()" title="Reset Filter"><i class="fa-solid fa-rotate-right"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white p-3 border-bottom">
+                    <h5 class="m-0 fw-bold"><i class="fa-solid fa-table-list text-primary"></i> Daftar Rencana Pekerjaan Preventive Maintenance</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive table-scrollable">
+                        <table class="table table-hover table-striped m-0 align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>No. Task</th>
+                                    <th>ID Mesin</th>
+                                    <th>Nama Mesin</th> 
+                                    <th>Area</th>
+                                    <th>Jenis Pekerjaan PM</th>
+                                    <th>Tgl Rencana</th>
+                                    <th>Periode</th>
+                                    <th>Status</th>
+                                    <th>Dibuat Oleh</th>
+                                    <th class="text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelJadwalList"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalTambahJadwal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-plus-circle"></i> Tambah Rencana PM</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formTambahPM" onsubmit="tambahJadwalBaru(event)">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">No Task:</label>
+                            <input type="text" class="form-control form-control-sm" id="tambahNoTask" placeholder="Contoh: PM-2026-001" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Area:</label>
+                            <select class="form-select form-select-sm" id="tambahArea" required></select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-primary"><i class="fa-solid fa-search"></i> Unit Mesin / Alat (Ketik untuk mencari):</label>
+                        <select class="form-select form-select-sm" id="tambahUnit" style="width: 100%;" required>
+                            <option value="">Memuat data mesin...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Jenis Pekerjaan PM:</label>
+                        <textarea class="form-control form-control-sm" id="tambahPekerjaan" rows="2" required></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Tanggal Rencana:</label>
+                            <input type="date" class="form-control form-control-sm" id="tambahTglRencana" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Periode (Siklus):</label>
+                            <select class="form-select form-select-sm" id="tambahPeriode" required>
+                                <option value="Harian">Harian</option>
+                                <option value="Bulanan">Bulanan</option>
+                                <option value="Tahunan">Tahunan</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-sm fw-bold">Simpan Jadwal Baru</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEditJadwal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-edit"></i> Edit Rencana PM</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditPM" onsubmit="simpanEditJadwal(event)">
+                    <input type="hidden" id="editId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">No Task:</label>
+                            <input type="text" class="form-control form-control-sm" id="editNoTask" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Area:</label>
+                            <select class="form-select form-select-sm" id="editArea" required></select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-primary"><i class="fa-solid fa-search"></i> Unit Mesin / Alat (Ketik untuk mencari):</label>
+                        <select class="form-select form-select-sm" id="editUnit" style="width: 100%;" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Jenis Pekerjaan PM:</label>
+                        <textarea class="form-control form-control-sm" id="editPekerjaan" rows="2" required></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold small">Tanggal Rencana:</label>
+                            <input type="date" class="form-control form-control-sm" id="editTglRencana" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold small">Periode (Siklus):</label>
+                            <select class="form-select form-select-sm" id="editPeriode" required>
+                                <option value="Harian">Harian</option>
+                                <option value="Bulanan">Bulanan</option>
+                                <option value="Tahunan">Tahunan</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold small">Status:</label>
+                            <select class="form-select form-select-sm" id="editStatus" required>
+                                <option value="Scheduled">Scheduled</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Overdue">Overdue</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-info text-white btn-sm fw-bold">Update Jadwal</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalSelesaiPM" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title fw-bold">Selesaikan Pekerjaan PM</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formSelesaiPM" onsubmit="simpanSelesaiDanHistory(event)">
+                    <input type="hidden" id="selesaiIdJadwal">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Alat / Mesin:</label>
+                            <input type="text" class="form-control form-control-sm bg-light" id="selesaiUnit" readonly>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Tgl Eksekusi Aktual:</label>
+                            <input type="date" class="form-control form-control-sm" id="selesaiTglEksekusi" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Kondisi Alat (Penyebab):</label>
+                        <textarea class="form-control form-control-sm" id="selesaiPenyebab" rows="2" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Uraian Pekerjaan:</label>
+                        <textarea class="form-control form-control-sm" id="selesaiUraian" rows="2" required></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Spare Part Terpakai:</label>
+                            <input type="text" class="form-control form-control-sm" id="selesaiSparepart" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Durasi Pekerjaan:</label>
+                            <input type="text" class="form-control form-control-sm" id="selesaiDurasi" required>
+                        </div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success btn-sm fw-bold">Kirim ke History</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    const userRole = "{{ session.role }}";
+    let dataJadwalGlobal = []; 
+    let dataMasterGlobal = [];
+
+    // INISIALISASI MASTER DATA (Area & Mesin)
+    function populateDropdowns(data) {
+        let optGroups = {};
+        let uniqueAreas = new Set();
+
+        data.forEach(m => {
+            let namaArea = m.area || 'Umum';
+            uniqueAreas.add(namaArea);
+            if(!optGroups[namaArea]) optGroups[namaArea] = [];
+            optGroups[namaArea].push(m);
+        });
+
+        // 1. Populasi Dropdown Mesin (Select2)
+        let opsiMesinHtml = '<option value="">-- Ketik ID atau Nama Mesin --</option>';
+        for(let area in optGroups) {
+            opsiMesinHtml += `<optgroup label="${area}">`;
+            optGroups[area].forEach(m => {
+                opsiMesinHtml += `<option value="${m.id_mesin}">${m.id_mesin} - ${m.nama_mesin}</option>`;
+            });
+            opsiMesinHtml += `</optgroup>`;
+        }
+        $('#tambahUnit, #editUnit').html(opsiMesinHtml);
+        $('#tambahUnit').select2({ theme: 'bootstrap-5', dropdownParent: $('#modalTambahJadwal') });
+        $('#editUnit').select2({ theme: 'bootstrap-5', dropdownParent: $('#modalEditJadwal') });
+
+        // 2. Populasi Dropdown Area (Filter & Form)
+        let opsiAreaHtml = '<option value="">-- Pilih Area --</option>';
+        let filterAreaHtml = '<option value="semua">Semua Area</option>';
+        [...uniqueAreas].sort().forEach(a => {
+            opsiAreaHtml += `<option value="${a}">${a}</option>`;
+            filterAreaHtml += `<option value="${a.toLowerCase()}">${a}</option>`;
+        });
+        $('#tambahArea, #editArea').html(opsiAreaHtml);
+        $('#filterArea').html(filterAreaHtml);
+    }
+
+    // FUNGSI MEMUAT JADWAL TABEL
+    function loadJadwal() {
+        fetch('/api/jadwal')
+            .then(res => res.json())
+            .then(data => {
+                dataJadwalGlobal = data; 
+                let html = '';
+                let hariIni = new Date();
+                hariIni.setHours(0, 0, 0, 0);
+
+                if (data.length === 0) {
+                    html = `<tr><td colspan="10" class="text-center text-muted">Belum ada data jadwal PM</td></tr>`;
+                } else {
+                    data.forEach(item => {
+                        let tglRencana = '-';
+                        let planDateObj = null;
+                        if (item.tgl_rencana) {
+                            planDateObj = new Date(item.tgl_rencana);
+                            if (!isNaN(planDateObj)) {
+                                tglRencana = `${planDateObj.getFullYear()}-${String(planDateObj.getMonth() + 1).padStart(2, '0')}-${String(planDateObj.getDate()).padStart(2, '0')}`;
+                            } else { tglRencana = item.tgl_rencana; }
+                        }
+                        
+                        if (item.status === 'Scheduled' && planDateObj !== null && planDateObj < hariIni) {
+                            item.status = 'Overdue';
+                        }
+                        
+                        let badgeColor = "bg-warning text-dark";
+                        if(item.status === 'Completed') badgeColor = "bg-success";
+                        if(item.status === 'Overdue') badgeColor = "bg-danger";
+                        if(item.status === 'Scheduled') badgeColor = "bg-primary";
+
+                        let actionButtons = '';
+                        if (item.status !== 'Completed') {
+                            actionButtons += `<button class="btn btn-sm btn-success py-0 px-2 fw-bold" onclick="bukaModalSelesai(${item.id})" title="Selesai"><i class="fa-solid fa-check"></i></button>`;
+                        } else {
+                            actionButtons += `<span class="badge bg-success"><i class="fa-solid fa-check-double"></i></span>`;
+                        }
+                        if (userRole === 'Admin') {
+                            actionButtons += `
+                                <button class="btn btn-sm btn-info text-white py-0 px-2 fw-bold ms-1" onclick="bukaModalEdit(${item.id})" title="Edit"><i class="fa-solid fa-edit"></i></button>
+                                <button class="btn btn-sm btn-danger py-0 px-2 fw-bold ms-1" onclick="hapusJadwal(${item.id})" title="Hapus"><i class="fa-solid fa-trash"></i></button>`;
+                        }
+
+                        // MENCARI NAMA MESIN DENGAN AMAN
+                        let mesinMstr = dataMasterGlobal.find(m => m.id_mesin === item.id_mesin);
+                        let namaTampil = mesinMstr ? mesinMstr.nama_mesin : '-';
+
+                        html += `
+                            <tr data-status="${item.status || 'Scheduled'}" data-tgl="${tglRencana}" data-area="${(item.area || '').toLowerCase()}">
+                                <td class="fw-bold">${item.no_task || '-'}</td>
+                                <td class="text-primary fw-bold text-nowrap">${item.id_mesin || '-'}</td>
+                                <td class="fw-bold">${namaTampil}</td> 
+                                <td><span class="badge bg-secondary">${item.area || '-'}</span></td>
+                                <td>${item.jenis_pekerjaan || '-'}</td>
+                                <td class="text-nowrap">${tglRencana}</td>
+                                <td>${item.periode || '-'}</td>
+                                <td><span class="badge ${badgeColor}">${item.status || 'Scheduled'}</span></td>
+                                <td><strong>${item.dibuat_oleh || 'Sistem'}</strong></td>
+                                <td class="text-center text-nowrap">${actionButtons}</td>
+                            </tr>
+                        `;
+                    });
+                }
+                document.getElementById('tabelJadwalList').innerHTML = html;
+                hitungStatistikDanCompliance(); 
+            });
+    }
+
+    function filterDataPM() {
+        const keyword = document.getElementById('inputPencarianAlat').value.toLowerCase();
+        const areaFilter = document.getElementById('filterArea').value.toLowerCase();
+        const statusFilter = document.getElementById('filterStatusJadwal').value;
+        const startDate = document.getElementById('filterTglMulai').value;
+        const endDate = document.getElementById('filterTglAkhir').value;
+        
+        document.querySelectorAll('#tabelJadwalList tr').forEach(row => {
+            if(!row.hasAttribute('data-status')) return;
+            
+            const textBaris = row.innerText.toLowerCase();
+            const statusRow = row.getAttribute('data-status');
+            const areaRow = row.getAttribute('data-area');
+            const tglRencana = row.getAttribute('data-tgl');
+
+            const cocokKeyword = textBaris.includes(keyword);
+            const cocokStatus = (statusFilter === 'semua' || statusRow === statusFilter);
+            const cocokArea = (areaFilter === 'semua' || areaRow === areaFilter);
+            
+            let cocokWaktu = true;
+            if (startDate && tglRencana < startDate) cocokWaktu = false;
+            if (endDate && tglRencana > endDate) cocokWaktu = false;
+
+            if (cocokKeyword && cocokArea && cocokWaktu && cocokStatus) row.style.display = '';
+            else row.style.display = 'none';
+        });
+        hitungStatistikDanCompliance();
+    }
+
+    function resetFilter() {
+        document.getElementById('inputPencarianAlat').value = '';
+        document.getElementById('filterArea').value = 'semua';
+        document.getElementById('filterStatusJadwal').value = 'semua';
+        document.getElementById('filterTglMulai').value = '';
+        document.getElementById('filterTglAkhir').value = '';
+        filterDataPM();
+    }
+
+    // ACTION MODALS
+    function bukaModalSelesai(id) {
+        const item = dataJadwalGlobal.find(x => x.id === id);
+        if(!item) return;
+        let d = new Date();
+        document.getElementById('selesaiIdJadwal').value = item.id;
+        document.getElementById('selesaiUnit').value = item.id_mesin;
+        document.getElementById('selesaiTglEksekusi').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        document.getElementById('selesaiPenyebab').value = "Kondisi normal, pengecekan rutin berkala."; 
+        document.getElementById('selesaiUraian').value = item.jenis_pekerjaan; 
+        document.getElementById('selesaiSparepart').value = "-";
+        document.getElementById('selesaiDurasi').value = "1 Jam";
+        new bootstrap.Modal(document.getElementById('modalSelesaiPM')).show();
+    }
+
+    function simpanSelesaiDanHistory(event) {
+        event.preventDefault();
+        const id = document.getElementById('selesaiIdJadwal').value;
+        const dataInput = {
+            tgl_eksekusi: document.getElementById('selesaiTglEksekusi').value,
+            penyebab: document.getElementById('selesaiPenyebab').value,
+            uraian: document.getElementById('selesaiUraian').value,
+            sparepart: document.getElementById('selesaiSparepart').value,
+            durasi: document.getElementById('selesaiDurasi').value
+        };
+        fetch('/api/jadwal/' + id + '/selesai', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataInput) })
+        .then(res => res.json()).then(res => {
+            alert(res.message);
+            if(res.status === 'success') { bootstrap.Modal.getInstance(document.getElementById('modalSelesaiPM')).hide(); loadJadwal(); }
+        });
+    }
+
+    function bukaModalEdit(id) {
+        const item = dataJadwalGlobal.find(x => x.id === id);
+        if(!item) return;
+        
+        document.getElementById('editId').value = item.id;
+        document.getElementById('editNoTask').value = item.no_task;
+        document.getElementById('editArea').value = item.area;
+        $('#editUnit').val(item.id_mesin).trigger('change');
+        document.getElementById('editPekerjaan').value = item.jenis_pekerjaan;
+        
+        let tglHanyaTanggal = '';
+        if (item.tgl_rencana) {
+            let d = new Date(item.tgl_rencana);
+            if (!isNaN(d)) tglHanyaTanggal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        document.getElementById('editTglRencana').value = tglHanyaTanggal;
+        document.getElementById('editPeriode').value = item.periode;
+        document.getElementById('editStatus').value = item.status || 'Scheduled';
+        new bootstrap.Modal(document.getElementById('modalEditJadwal')).show();
+    }
+
+    function simpanEditJadwal(event) {
+        event.preventDefault();
+        const dataInput = {
+            no_task: document.getElementById('editNoTask').value,
+            id_mesin: $('#editUnit').val(),
+            area: document.getElementById('editArea').value,
+            jenis_pekerjaan: document.getElementById('editPekerjaan').value,
+            tgl_rencana: document.getElementById('editTglRencana').value,
+            periode: document.getElementById('editPeriode').value,
+            status: document.getElementById('editStatus').value
+        };
+        fetch('/api/jadwal/' + document.getElementById('editId').value, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataInput) })
+        .then(res => res.json()).then(res => { alert(res.message); bootstrap.Modal.getInstance(document.getElementById('modalEditJadwal')).hide(); loadJadwal(); });
+    }
+
+    function tambahJadwalBaru(event) {
+        event.preventDefault();
+        const dataInput = {
+            no_task: document.getElementById('tambahNoTask').value,
+            id_mesin: $('#tambahUnit').val(),
+            area: document.getElementById('tambahArea').value,
+            jenis_pekerjaan: document.getElementById('tambahPekerjaan').value,
+            tgl_rencana: document.getElementById('tambahTglRencana').value,
+            periode: document.getElementById('tambahPeriode').value,
+            status: 'Scheduled' 
+        };
+        fetch('/api/jadwal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataInput) })
+        .then(res => res.json()).then(res => { 
+            alert(res.message); 
+            bootstrap.Modal.getInstance(document.getElementById('modalTambahJadwal')).hide(); 
+            document.getElementById('formTambahPM').reset(); $('#tambahUnit').val('').trigger('change');
+            loadJadwal(); 
+        });
+    }
+
+    function hapusJadwal(id) {
+        if (confirm("Hapus jadwal ini permanen?")) { fetch('/api/jadwal/' + id, { method: 'DELETE' }).then(res => res.json()).then(res => { alert(res.message); loadJadwal(); }); }
+    }
+
+    function hitungStatistikDanCompliance() {
+        let total = 0, completed = 0, overdue = 0;
+        document.querySelectorAll('#tabelJadwalList tr').forEach(row => {
+            if (row.style.display !== 'none' && row.hasAttribute('data-status')) {
+                total++;
+                const status = row.getAttribute('data-status');
+                if(status === 'Completed') completed++;
+                if(status === 'Overdue') overdue++;
+            }
+        });
+        document.getElementById('valTotalJadwal').innerText = total;
+        document.getElementById('valCompleted').innerText = completed;
+        document.getElementById('valOverdue').innerText = overdue;
+        let rate = total > 0 ? ((completed / total) * 100).toFixed(1) : 0;
+        const b = document.getElementById('valCompliance');
+        b.innerText = rate + "%";
+        b.className = total === 0 ? "fw-bold mt-1 mb-0 text-muted" : (rate < 80 ? "fw-bold mt-1 mb-0 text-danger" : (rate < 95 ? "fw-bold mt-1 mb-0 text-warning" : "fw-bold mt-1 mb-0 text-success"));
+    }
+
+    // PENTING: PROSES BERANTAI (CHAINING) UNTUK MENCEGAH NAMA MESIN HILANG SAAT REFRESH
+    document.addEventListener("DOMContentLoaded", function() {
+        fetch('/api/master-mesin')
+        .then(res => res.json())
+        .then(data => {
+            dataMasterGlobal = data;
+            populateDropdowns(data); 
+            loadJadwal(); // Tabel baru di-load SETELAH data master 100% siap
+        }).catch(err => console.error("Error API Master:", err));     
+    });
+</script>
+</body>
+</html>
