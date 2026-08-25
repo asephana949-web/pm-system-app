@@ -14,10 +14,11 @@
         .sidebar a { color: #bdc3c7; text-decoration: none; padding: 10px 20px; display: block; }
         .sidebar a:hover, .sidebar a.aktif { background-color: #34495e; color: white; border-left: 4px solid #3498db; }
         
-        .kpi-card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #3498db; position: relative; }
-        .kpi-title { font-size: 12px; color: #7f8c8d; text-transform: uppercase; font-weight: bold; }
-        .kpi-value { font-size: 24px; font-weight: bold; color: #2c3e50; margin-top: 5px; }
-        .info-icon { position: absolute; top: 15px; right: 15px; cursor: pointer; color: #3498db; font-size: 16px; }
+        .kpi-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #3498db; position: relative; height: 100%;}
+        .kpi-title { font-size: 11px; color: #7f8c8d; text-transform: uppercase; font-weight: bold; padding-right: 15px;}
+        .kpi-value { font-size: 22px; font-weight: bold; color: #2c3e50; margin-top: 5px; }
+        .info-icon { position: absolute; top: 15px; right: 10px; cursor: pointer; color: #3498db; font-size: 16px; transition: 0.2s;}
+        .info-icon:hover { color: #2c3e50; transform: scale(1.1);}
         
         .status-aman { background-color: #2ecc71; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;}
         .status-hati-hati { background-color: #f1c40f; color: black; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;}
@@ -57,7 +58,17 @@
                             <label class="fw-bold mx-2 text-nowrap"><i class="fa-solid fa-calendar-days text-primary"></i> Periode:</label>
                             <select class="form-select form-select-sm border-0 fw-bold shadow-none" id="filterPeriodeDashboard" onchange="filterDashboard()">
                                 <optgroup label="Tahunan">
-                                    <option value="Y" selected>Tahunan Berjalan (YTD)</option>
+                                    <option value="Y" selected>Tahunan Berjalan</option>
+                                </optgroup>
+                                <optgroup label="Semester">
+                                    <option value="S1">Semester 1 (Jan-Jun)</option>
+                                    <option value="S2">Semester 2 (Jul-Des)</option>
+                                </optgroup>
+                                <optgroup label="Quarter (Kuartal)">
+                                    <option value="Q1">Quarter 1 (Jan-Mar)</option>
+                                    <option value="Q2">Quarter 2 (Apr-Jun)</option>
+                                    <option value="Q3">Quarter 3 (Jul-Sep)</option>
+                                    <option value="Q4">Quarter 4 (Okt-Des)</option>
                                 </optgroup>
                                 <optgroup label="Bulanan">
                                     <option value="1">Januari</option>
@@ -82,34 +93,54 @@
                             </select>
                         </div>
                     </div>
+
+                    <div class="d-flex align-items-center gap-3 border-start ps-4">
+                        <div class="position-relative" style="cursor: pointer;">
+                            <i class="fa-solid fa-bell fs-5 text-secondary"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"></span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2" style="cursor: pointer;">
+                            <img src="https://ui-avatars.com/api/?name={{ username }}&background=3498db&color=fff" alt="User" class="rounded-circle" width="35" height="35">
+                            <span class="fw-bold text-dark">{{ username }}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="row mb-4">
-                <div class="col-md-3">
+            <!-- Row KPI menggunakan 5 Kolom agar pas -->
+            <div class="row row-cols-1 row-cols-md-5 g-3 mb-4">
+                <div class="col">
                     <div class="kpi-card" style="border-left-color: #2ecc71;">
-                        <i class="fa-solid fa-circle-info info-icon" data-bs-toggle="modal" data-bs-target="#modalMTBF"></i>
-                        <div class="kpi-title">MTBF Wilayah (Ketersediaan)</div>
-                        <div class="kpi-value" id="mtbfValue">Menghitung...</div>
+                        <i class="fa-solid fa-circle-info info-icon" data-bs-toggle="modal" data-bs-target="#modalMTBF" title="Detail Hitungan MTBF"></i>
+                        <div class="kpi-title">MTBF Wilayah</div>
+                        <div class="kpi-value" id="mtbfValue">-</div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col">
                     <div class="kpi-card" style="border-left-color: #e74c3c;">
-                        <i class="fa-solid fa-circle-info info-icon" data-bs-toggle="modal" data-bs-target="#modalMTTR"></i>
-                        <div class="kpi-title">MTTR Wilayah (Waktu Perbaikan)</div>
-                        <div class="kpi-value" id="mttrValue">Menghitung...</div>
+                        <i class="fa-solid fa-circle-info info-icon" data-bs-toggle="modal" data-bs-target="#modalMTTR" title="Detail Hitungan MTTR"></i>
+                        <div class="kpi-title">MTTR Wilayah</div>
+                        <div class="kpi-value" id="mttrValue">-</div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col">
+                    <div class="kpi-card" style="border-left-color: #9b59b6;">
+                        <i class="fa-solid fa-circle-info info-icon" data-bs-toggle="modal" data-bs-target="#modalAvail" title="Detail Hitungan Availability"></i>
+                        <div class="kpi-title">Availability</div>
+                        <div class="kpi-value" id="availValue">-</div>
+                    </div>
+                </div>
+                <div class="col">
                     <div class="kpi-card" style="border-left-color: #f1c40f;">
+                        <i class="fa-solid fa-circle-info info-icon" data-bs-toggle="modal" data-bs-target="#modalPM" title="Detail PM Compliance"></i>
                         <div class="kpi-title">PM Compliance</div>
-                        <div class="kpi-value" id="pmValue">Menghitung...</div>
+                        <div class="kpi-value" id="pmValue">-</div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col">
                     <div class="kpi-card" style="border-left-color: #3498db;">
-                        <div class="kpi-title">Work Order Aktif (Pending)</div>
-                        <div class="kpi-value" id="woAktifValue">Menghitung...</div>
+                        <div class="kpi-title">WO Aktif (Pending)</div>
+                        <div class="kpi-value" id="woAktifValue">-</div>
                     </div>
                 </div>
             </div>
@@ -179,47 +210,69 @@
     </div>
 </div>
 
-<!-- Modal Penjelasan MTBF -->
+<!-- Modal Dinamis (Digunakan oleh JS) -->
 <div class="modal fade" id="modalMTBF" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="fa-solid fa-calculator"></i> Penjelasan MTBF Dashboard</h5>
+                <h5 class="modal-title"><i class="fa-solid fa-calculator"></i> Data Kalkulasi MTBF</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Di halaman Dashboard, <strong>MTBF (Mean Time Between Failure)</strong> dihitung berdasarkan sudut pandang <strong>Kerugian Produksi (Downtime Pabrik)</strong>.</p>
-                <div class="bg-light p-3 border rounded mb-3">
-                    <strong>Rumus:</strong><br>
-                    (Total Jam Operasional - Total Jam Downtime) / Jumlah Kejadian Downtime
-                </div>
-                <ul>
-                    <li><strong>Total Jam Operasional:</strong> Menghitung total jam kalender (24 jam x Jumlah Hari dalam periode yang dipilih).</li>
-                    <li><strong>Kejadian Kerusakan:</strong> Hanya kerusakan yang menyebabkan <strong>mesin mati (Is Downtime = Ya)</strong> yang dihitung. Kerusakan komponen yang tidak mengganggu produksi akan diabaikan.</li>
-                </ul>
+                <p><strong>Rumus:</strong> (Total Jam Operasional - Total Downtime) / Kejadian</p>
+                <div class="bg-light p-2 border rounded mb-3 text-center" id="mtbfRumusTeks">Memuat data...</div>
+                <h6>Rincian Kejadian Downtime:</h6>
+                <table class="table table-sm table-bordered"><tbody id="tabelDowntimeMTBF"></tbody></table>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal Penjelasan MTTR -->
 <div class="modal fade" id="modalMTTR" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="fa-solid fa-wrench"></i> Penjelasan MTTR Dashboard</h5>
+                <h5 class="modal-title"><i class="fa-solid fa-wrench"></i> Data Kalkulasi MTTR</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Di halaman Dashboard, <strong>MTTR (Mean Time To Repair)</strong> mewakili rata-rata <strong>Waktu Kehilangan Produksi</strong> akibat kerusakan.</p>
-                <div class="bg-light p-3 border rounded mb-3">
-                    <strong>Rumus:</strong><br>
-                    Total Jam Downtime / Jumlah Kejadian Downtime
-                </div>
-                <ul>
-                    <li>Hitungan ini murni mengambil angka dari kolom <strong>Downtime (Jam)</strong> di Riwayat Perbaikan.</li>
-                    <li>Waktu/durasi mekanik bekerja tidak dimasukkan dalam hitungan ini, karena fokus utama Dashboard adalah seberapa cepat ketersediaan mesin kembali normal.</li>
-                </ul>
+                <p><strong>Rumus:</strong> Total Jam Downtime / Kejadian Kerusakan</p>
+                <div class="bg-light p-2 border rounded mb-3 text-center" id="mttrRumusTeks">Memuat data...</div>
+                <h6>Rincian Kejadian Downtime:</h6>
+                <table class="table table-sm table-bordered"><tbody id="tabelDowntimeMTTR"></tbody></table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAvail" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-purple" style="background-color: #9b59b6; color: white;">
+                <h5 class="modal-title"><i class="fa-solid fa-industry"></i> Data Kalkulasi Availability</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Rumus:</strong> ((Total Jam - Total Downtime) / Total Jam) x 100</p>
+                <div class="bg-light p-2 border rounded mb-3 text-center" id="availRumusTeks">Memuat data...</div>
+                <small class="text-muted">*Availability menunjukkan persentase waktu pabrik/wilayah ini benar-benar siap dan beroperasi tanpa hambatan kerusakan mesin.</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPM" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="fa-solid fa-calendar-check"></i> Data PM Compliance</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Kepatuhan terhadap jadwal Preventive Maintenance pada periode ini:</p>
+                <div class="bg-light p-3 border rounded mb-3 text-center" id="pmRumusTeks">Memuat data...</div>
+                <h6>Rincian Status Work Order:</h6>
+                <ul class="list-group" id="listPMDetail"></ul>
             </div>
         </div>
     </div>
@@ -272,7 +325,6 @@
         });
     }
 
-    // Fungsi Format Tanggal (Misal: 25-Okt-2026)
     function formatTanggalPendek(tglStr) {
         if (!tglStr) return "-";
         const d = new Date(tglStr);
@@ -281,24 +333,32 @@
     }
 
     function getStartEndDate(periodeVal) {
-        let start, end;
+        let start, end, totalDays;
         if (periodeVal === 'Y') {
             start = new Date(tahunBerjalan, 0, 1); end = new Date(tahunBerjalan, 11, 31);
+        } else if (periodeVal.startsWith('S')) {
+            const s = parseInt(periodeVal.replace('S', ''));
+            start = new Date(tahunBerjalan, (s - 1) * 6, 1); end = new Date(tahunBerjalan, s * 6, 0);
+        } else if (periodeVal.startsWith('Q')) {
+            const q = parseInt(periodeVal.replace('Q', ''));
+            start = new Date(tahunBerjalan, (q - 1) * 3, 1); end = new Date(tahunBerjalan, q * 3, 0);
         } else {
             const bln = parseInt(periodeVal) - 1;
             start = new Date(tahunBerjalan, bln, 1); end = new Date(tahunBerjalan, bln + 1, 0); 
         }
-        return { start, end };
+        
+        totalDays = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        return { start, end, totalDays };
     }
 
     function filterDashboard() {
         const periodeVal = document.getElementById('filterPeriodeDashboard').value;
         const wilayahVal = document.getElementById('wilayahFilter').value;
-        const { start, end } = getStartEndDate(periodeVal);
+        const { start, end, totalDays } = getStartEndDate(periodeVal);
 
         const listMesinID = dbMaster.filter(m => wilayahVal === 'semua' || m.wilayah === wilayahVal).map(m => m.id_mesin);
 
-        // 1. HITUNG MTBF & MTTR
+        // 1. HITUNG MTBF, MTTR, & AVAILABILITY
         const riwayatPeriode = dbRiwayat.filter(r => {
             const tgl = new Date(r.tgl_eksekusi);
             return listMesinID.includes(r.nama_alat) && tgl >= start && tgl <= end && String(r.is_downtime).toLowerCase() === 'ya';
@@ -306,24 +366,42 @@
 
         let totalDowntimeJam = 0;
         let countBreakdown = riwayatPeriode.length;
-        riwayatPeriode.forEach(r => { totalDowntimeJam += (parseFloat(r.downtime_jam) || 0); });
+        let htmlDowntime = "";
 
-        let diffDays = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24));
-        if (diffDays === 0) diffDays = 1;
-        const jamOperasionalPlant = diffDays * 24; 
+        riwayatPeriode.forEach(r => { 
+            let jam = parseFloat(r.downtime_jam) || 0;
+            totalDowntimeJam += jam; 
+            
+            let mObj = dbMaster.find(m => m.id_mesin === r.nama_alat);
+            let nama = mObj ? mObj.nama_mesin : r.nama_alat;
+            htmlDowntime += `<tr><td>${r.nama_alat} (${nama})</td><td class="text-danger fw-bold">${jam} Jam</td></tr>`;
+        });
 
-        let elMtbf = document.getElementById('mtbfValue');
-        let elMttr = document.getElementById('mttrValue');
+        if (htmlDowntime === "") htmlDowntime = `<tr><td colspan="2" class="text-center text-muted">Tidak ada downtime produksi.</td></tr>`;
+
+        const jamOperasionalPlant = totalDays * 24; 
+
+        let mttr = 0;
+        let mtbf = jamOperasionalPlant;
+        let availability = 100;
 
         if (countBreakdown > 0) {
-            let mttr = totalDowntimeJam / countBreakdown;
-            let mtbf = (jamOperasionalPlant - totalDowntimeJam) / countBreakdown;
-            elMttr.innerText = mttr.toFixed(1) + " Jam";
-            elMtbf.innerText = Math.round(mtbf).toLocaleString() + " Jam";
-        } else {
-            elMttr.innerText = "0 Jam";
-            elMtbf.innerText = "> " + jamOperasionalPlant.toLocaleString() + " Jam";
+            mttr = totalDowntimeJam / countBreakdown;
+            mtbf = (jamOperasionalPlant - totalDowntimeJam) / countBreakdown;
+            availability = ((jamOperasionalPlant - totalDowntimeJam) / jamOperasionalPlant) * 100;
         }
+
+        document.getElementById('mttrValue').innerText = mttr.toFixed(1) + " Jam";
+        document.getElementById('mtbfValue').innerText = mtbf >= jamOperasionalPlant ? "> " + jamOperasionalPlant + " Jam" : mtbf.toFixed(1) + " Jam";
+        document.getElementById('availValue').innerText = availability.toFixed(2) + "%";
+
+        // Inject ke Modal Popups
+        document.getElementById('mtbfRumusTeks').innerHTML = `(${jamOperasionalPlant} Jam - ${totalDowntimeJam} Jam) / ${countBreakdown} Kejadian = <strong>${mtbf.toFixed(1)} Jam</strong>`;
+        document.getElementById('mttrRumusTeks').innerHTML = `${totalDowntimeJam} Jam / ${countBreakdown} Kejadian = <strong>${mttr.toFixed(1)} Jam</strong>`;
+        document.getElementById('availRumusTeks').innerHTML = `((${jamOperasionalPlant} Jam - ${totalDowntimeJam} Jam) / ${jamOperasionalPlant} Jam) x 100 = <strong>${availability.toFixed(2)}%</strong>`;
+        
+        document.getElementById('tabelDowntimeMTBF').innerHTML = htmlDowntime;
+        document.getElementById('tabelDowntimeMTTR').innerHTML = htmlDowntime;
 
         // 2. HITUNG PM COMPLIANCE
         const jadwalPeriode = dbJadwal.filter(j => listMesinID.includes(j.id_mesin) && new Date(j.tgl_rencana) >= start && new Date(j.tgl_rencana) <= end);
@@ -334,6 +412,13 @@
 
         document.getElementById('pmValue').innerText = persentasePM + "%";
         document.getElementById('woAktifValue').innerText = pmPending + " WO";
+        
+        document.getElementById('pmRumusTeks').innerHTML = `Selesai (${pmSelesai}) / Total Jadwal (${totalPM}) x 100 = <strong>${persentasePM}%</strong>`;
+        document.getElementById('listPMDetail').innerHTML = `
+            <li class="list-group-item d-flex justify-content-between align-items-center">Total Jadwal Work Order <span class="badge bg-primary rounded-pill">${totalPM}</span></li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">Berhasil Diselesaikan (Completed) <span class="badge bg-success rounded-pill">${pmSelesai}</span></li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">Belum Dikerjakan (Pending) <span class="badge bg-danger rounded-pill">${pmPending}</span></li>
+        `;
 
         // 3. GRAFIK KONDISI MESIN & TOP 10 KRITIS
         let logTerbaruPerMesin = [];
@@ -379,7 +464,6 @@
         } else {
             top10Raw.slice(0, 10).forEach((item, index) => {
                 let badge = item.score === 3 ? "status-berbahaya" : "status-hati-hati";
-                // Gabungkan ID dan Nama Mesin
                 let namaTampil = item.nama ? `${item.id}<br><small class="text-muted">${item.nama}</small>` : item.id;
                 
                 let row = `<tr>
