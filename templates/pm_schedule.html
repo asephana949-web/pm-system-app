@@ -268,10 +268,25 @@
                             <input type="text" class="form-control form-control-sm" id="selesaiSparepart" required>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Durasi Pekerjaan:</label>
+                            <label class="form-label fw-bold small">Durasi Pekerjaan (Mekanik):</label>
                             <input type="text" class="form-control form-control-sm" id="selesaiDurasi" required>
                         </div>
                     </div>
+                    <!-- TAMBAHAN BARU: INPUT DOWNTIME -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Menyebabkan Downtime?</label>
+                            <select class="form-select form-select-sm" id="selesaiIsDowntime" onchange="toggleDowntimeSelesai()" required>
+                                <option value="Tidak">Tidak</option>
+                                <option value="Ya">Ya (Mesin Mati)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Total Downtime (Jam):</label>
+                            <input type="number" step="any" min="0" class="form-control form-control-sm bg-light" id="selesaiDowntimeJam" value="0" readonly required>
+                        </div>
+                    </div>
+                    
                     <div class="d-grid">
                         <button type="submit" class="btn btn-success btn-sm fw-bold">Kirim ke History</button>
                     </div>
@@ -433,6 +448,21 @@
         filterDataPM();
     }
 
+    // TAMBAHAN BARU: FUNGSI TOGGLE DOWNTIME
+    function toggleDowntimeSelesai() {
+        const isDown = document.getElementById('selesaiIsDowntime').value;
+        const inputDt = document.getElementById('selesaiDowntimeJam');
+        if(isDown === 'Ya') {
+            inputDt.readOnly = false;
+            inputDt.classList.remove('bg-light');
+            if(inputDt.value == 0) inputDt.value = 1;
+        } else {
+            inputDt.readOnly = true;
+            inputDt.classList.add('bg-light');
+            inputDt.value = 0;
+        }
+    }
+
     // ACTION MODALS
     function bukaModalSelesai(id) {
         const item = dataJadwalGlobal.find(x => x.id === id);
@@ -445,9 +475,17 @@
         document.getElementById('selesaiUraian').value = item.jenis_pekerjaan; 
         document.getElementById('selesaiSparepart').value = "-";
         document.getElementById('selesaiDurasi').value = "1 Jam";
+        
+        // Reset status downtime saat popup terbuka
+        document.getElementById('selesaiIsDowntime').value = "Tidak";
+        document.getElementById('selesaiDowntimeJam').value = "0";
+        document.getElementById('selesaiDowntimeJam').readOnly = true;
+        document.getElementById('selesaiDowntimeJam').classList.add('bg-light');
+
         new bootstrap.Modal(document.getElementById('modalSelesaiPM')).show();
     }
 
+    // PERUBAHAN: MENGIRIM DATA DOWNTIME KE API
     function simpanSelesaiDanHistory(event) {
         event.preventDefault();
         const id = document.getElementById('selesaiIdJadwal').value;
@@ -456,7 +494,9 @@
             penyebab: document.getElementById('selesaiPenyebab').value,
             uraian: document.getElementById('selesaiUraian').value,
             sparepart: document.getElementById('selesaiSparepart').value,
-            durasi: document.getElementById('selesaiDurasi').value
+            durasi: document.getElementById('selesaiDurasi').value,
+            is_downtime: document.getElementById('selesaiIsDowntime').value,
+            downtime_jam: document.getElementById('selesaiDowntimeJam').value
         };
         fetch('/api/jadwal/' + id + '/selesai', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataInput) })
         .then(res => res.json()).then(res => {

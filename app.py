@@ -130,11 +130,17 @@ def selesaikan_jadwal(id):
             if not jadwal: return jsonify({"status": "error", "message": "Jadwal tidak ditemukan!"}), 404
 
             cursor.execute("UPDATE jadwal_pm SET status='Completed' WHERE id=%s", (id,))
+            
+            # TAMBAHAN BARU: Menangkap is_downtime dan downtime_jam
+            is_dt = data.get('is_downtime', 'Tidak')
+            dt_jam = data.get('downtime_jam', 0)
+            if not dt_jam or str(dt_jam).strip() == '': dt_jam = 0
+            
             sql_history = """INSERT INTO riwayat_perbaikan (tgl_eksekusi, nama_alat, tipe_pekerjaan, penyebab_kerusakan, uraian_pekerjaan, sparepart_terpakai, durasi_jam, dibuat_oleh, is_downtime, downtime_jam) 
                              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-            cursor.execute(sql_history, (data.get('tgl_eksekusi'), jadwal['id_mesin'], 'Preventive', data.get('penyebab'), data.get('uraian'), data.get('sparepart'), data.get('durasi'), session['username'], 'Tidak', 0))
+            cursor.execute(sql_history, (data.get('tgl_eksekusi'), jadwal['id_mesin'], 'Preventive', data.get('penyebab'), data.get('uraian'), data.get('sparepart'), data.get('durasi'), session['username'], is_dt, dt_jam))
             conn.commit()
-            return jsonify({"status": "success", "message": "Pekerjaan selesai & masuk ke History!"})
+            return jsonify({"status": "success", "message": "Pekerjaan selesai & masuk ke History dengan rincian Downtime!"})
     finally:
         conn.close()
 
@@ -238,6 +244,7 @@ def handle_ai_analysis():
                 return jsonify({"status": "success", "message": "Log Analisis AI berhasil disimpan secara permanen!"})
     finally:
         conn.close()
+        
 @app.route('/api/ai-analysis/<int:id>', methods=['PUT', 'DELETE'])
 def manage_ai_analysis_id(id):
     if session.get('role') != 'Admin': return jsonify({"status": "error", "message": "Akses Ditolak!"}), 403
@@ -258,6 +265,7 @@ def manage_ai_analysis_id(id):
             return jsonify({"status": "success", "message": pesan})
     finally:
         conn.close()
+
 if __name__ == '__main__':
     print("🚀 Server Backend PM System Berjalan di: http://127.0.0.1:5000")
     app.run(debug=True, port=5000)
