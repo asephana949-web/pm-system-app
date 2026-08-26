@@ -96,6 +96,25 @@ def get_master_mesin():
     finally:
         conn.close()
 
+@app.route('/api/master-mesin/<id_mesin>', methods=['PUT'])
+def update_master_mesin(id_mesin):
+    if session.get('role') != 'Admin': return jsonify({"status": "error", "message": "Akses Ditolak!"}), 403
+    data = request.json
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = """UPDATE master_mesin 
+                     SET tipe_mesin=%s, tahun_instalasi=%s, daya_motor=%s, rpm=%s, tipe_pelumas=%s, link_dokumen=%s 
+                     WHERE id_mesin=%s"""
+            cursor.execute(sql, (
+                data.get('tipe_mesin'), data.get('tahun_instalasi'), data.get('daya_motor'), 
+                data.get('rpm'), data.get('tipe_pelumas'), data.get('link_dokumen'), id_mesin
+            ))
+            conn.commit()
+            return jsonify({"status": "success", "message": "Spesifikasi Teknis berhasil diperbarui!"})
+    finally:
+        conn.close()
+
 # ==========================================
 # API: JADWAL PM 
 # ==========================================
