@@ -43,9 +43,7 @@
             <a href="/machine-profile" class="aktif"><i class="fa-solid fa-server"></i> Machine Profile</a>
             <a href="/pm-schedule"><i class="fa-solid fa-calendar-check"></i> PM Schedule</a>
             <a href="/machine-history"><i class="fa-solid fa-clock-rotate-left"></i> Machine History</a>
-            {% if session.role == 'Admin' %}
             <a href="/ai-analysis"><i class="fa-solid fa-brain"></i> AI Analysis</a>
-            {% endif %}
             <a href="/logout" class="text-danger mt-4"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
         </div>
 
@@ -98,9 +96,7 @@
                     <div class="card shadow-sm border-0 mb-3">
                         <div class="card-header bg-dark text-white fw-bold p-3 d-flex justify-content-between align-items-center">
                             <span><i class="fa-solid fa-clipboard-list"></i> Spesifikasi Teknis</span>
-                            {% if session.role == 'Admin' %}
                             <button class="btn btn-sm btn-outline-light py-0" onclick="bukaModalEditSpec()"><i class="fa-solid fa-edit"></i> Edit</button>
-                            {% endif %}
                         </div>
                         <div class="card-body">
                             <div class="spec-row"><span class="spec-label">Nama Aset</span><span class="spec-val text-primary" id="specNama">-</span></div>
@@ -240,9 +236,9 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Di Profil Mesin, MTBF dihitung spesifik untuk <strong>Keandalan Mekanik Aset Ini</strong>, yaitu seberapa sering mekanik harus turun tangan melakukan perbaikan *Corrective*.</p>
+                <p>Di Profil Mesin, MTBF dihitung spesifik untuk <strong>Keandalan Komponen Aset Ini</strong>, berdasarkan seluruh riwayat pekerjaan mekanik.</p>
                 <div class="bg-light p-2 border rounded mb-3 text-center" id="mtbfProfileTeks">Memuat data...</div>
-                <h6>Rincian Intervensi Perbaikan (Corrective):</h6>
+                <h6>Rincian Riwayat Pekerjaan (Durasi):</h6>
                 <table class="table table-sm table-bordered"><tbody id="tabelIntervensiMTBF"></tbody></table>
             </div>
         </div>
@@ -257,7 +253,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Mewakili rata-rata <strong>Durasi Waktu Kerja Mekanik</strong> saat memperbaiki mesin ini.</p>
+                <p>Mewakili rata-rata <strong>Durasi Waktu Kerja Perbaikan</strong> aktual saat tim memelihara mesin ini.</p>
                 <div class="bg-light p-2 border rounded mb-3 text-center" id="mttrProfileTeks">Memuat data...</div>
             </div>
         </div>
@@ -268,17 +264,15 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="fa-solid fa-heart-pulse"></i> Overall Health Index</h5>
+                <h5 class="modal-title"><i class="fa-solid fa-heart-pulse"></i> Analisis Health Index AI</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Health Index (0-100%) merepresentasikan "Kesehatan" aktual mesin berdasarkan Log AI (ISO 10816-3) terakhir.</p>
-                <ul>
-                    <li><strong>100%</strong>: Kondisi Default / Belum ada masalah</li>
-                    <li><strong>92%</strong>: Berada di Zone B (Dapat diterima)</li>
-                    <li><strong>78%</strong>: Berada di Zone C (Waspada, perbaikan terencana)</li>
-                    <li><strong>55%</strong>: Berada di Zone D (Bahaya, kerusakan segera)</li>
-                </ul>
+                <p>Health Index (0-100%) ditarik secara dinamis dari log analisis prediksi (ISO 10816-3) terbaru untuk mesin ini.</p>
+                <div class="bg-light p-3 border rounded mb-3" id="healthDetailTeks">
+                    Memuat data AI...
+                </div>
+                <small class="text-muted">*Jika nilai di bawah 100%, sistem mendeteksi anomali pada vibrasi atau parameter lain yang memerlukan intervensi tim.</small>
             </div>
         </div>
     </div>
@@ -383,10 +377,10 @@
         
         const riwayatMesin = dbRiwayatGlobal.filter(r => r.nama_alat === idMesin);
         
-        // Filter: Hanya perbaikan tipe 'Corrective' (Kerusakan).
+        // Menghapus filter Corrective agar SELURUH riwayat masuk ke kalkulasi sesuai permintaan
         const dataKerusakan = riwayatMesin.filter(r => {
             const tgl = new Date(r.tgl_eksekusi);
-            return r.tipe_pekerjaan === 'Corrective' && tgl >= startDate && tgl <= endDate;
+            return tgl >= startDate && tgl <= endDate;
         });
 
         let jumlahKerusakan = dataKerusakan.length;
@@ -399,7 +393,7 @@
             htmlIntervensi += `<tr><td>${parseTanggalAman(r.tgl_eksekusi)}<br><small class="text-muted">${r.uraian_pekerjaan}</small></td><td class="text-danger fw-bold text-center">${durasi} Jam</td></tr>`;
         });
 
-        if(htmlIntervensi === "") htmlIntervensi = `<tr><td colspan="2" class="text-center text-muted">Aman! Tidak ada perbaikan corrective.</td></tr>`;
+        if(htmlIntervensi === "") htmlIntervensi = `<tr><td colspan="2" class="text-center text-muted">Aman! Tidak ada riwayat perbaikan di tanggal ini.</td></tr>`;
 
         // Hitung total jam operasional dari rentang tanggal
         let diffTime = Math.abs(endDate - startDate);
@@ -422,8 +416,8 @@
             divMTBF.className = mtbf > 720 ? "kpi-value text-success" : (mtbf >= 168 ? "kpi-value text-warning" : "kpi-value text-danger");
             
             // Isi text popup
-            document.getElementById('mtbfProfileTeks').innerHTML = `(${totalJamRange} Jam Total - ${totalPerbaikanJam} Jam Intervensi) / ${jumlahKerusakan} Kejadian = <strong>${mtbf.toFixed(1)} Jam</strong>`;
-            document.getElementById('mttrProfileTeks').innerHTML = `${totalPerbaikanJam} Jam Kerja / ${jumlahKerusakan} Kejadian = <strong>${mttr.toFixed(1)} Jam</strong>`;
+            document.getElementById('mtbfProfileTeks').innerHTML = `(${totalJamRange} Jam Total - ${totalPerbaikanJam} Jam Durasi) / ${jumlahKerusakan} Kejadian = <strong>${mtbf.toFixed(1)} Jam</strong>`;
+            document.getElementById('mttrProfileTeks').innerHTML = `${totalPerbaikanJam} Jam Durasi / ${jumlahKerusakan} Kejadian = <strong>${mttr.toFixed(1)} Jam</strong>`;
             
         } else {
             divMTTR.innerText = "0 Jam";
@@ -431,7 +425,7 @@
             divMTTR.className = "kpi-value text-success";
             divMTBF.className = "kpi-value text-success";
             
-            document.getElementById('mtbfProfileTeks').innerHTML = `Karena tidak ada kerusakan (Corrective), MTBF di atas jam operasional <strong>(> ${totalJamRange} Jam)</strong>`;
+            document.getElementById('mtbfProfileTeks').innerHTML = `Karena tidak ada kejadian kerusakan, MTBF dinilai maksimal <strong>(> ${totalJamRange} Jam)</strong>`;
             document.getElementById('mttrProfileTeks').innerHTML = `Tidak ada data waktu perbaikan (MTTR = 0).`;
         }
         
@@ -442,10 +436,14 @@
         dataKesehatanGlobal = [];
         let valHealthSekarang = 100;
         let statusText = "Running (Normal)"; let statusColor = "#2ecc71"; 
+        
+        // Logic Baru: Injeksi Data ke Popup Health Index
+        let healthPopupContent = "";
 
         if (logs.length === 0) {
             let today = new Date().toISOString().split('T')[0];
             dataKesehatanGlobal.push({ tgl: today, val: 100, iso: "Belum Ada Analisis", indikasi: "Kondisi Default (Aman)", rekomendasi: "-" });
+            healthPopupContent = `<div class="text-center text-success fw-bold"><i class="fa-solid fa-shield-halved fs-1 mb-2"></i><br>Aset belum memiliki riwayat analisis AI. Status dianggap 100% Aman.</div>`;
         } else {
             logs.forEach(item => {
                 let currentHealth = 100; 
@@ -462,7 +460,33 @@
                 });
             });
             valHealthSekarang = dataKesehatanGlobal[dataKesehatanGlobal.length - 1].val;
+            
+            // Siapkan data untuk Popup Health Index berdasarkan log terbaru
+            let lastLog = logs[logs.length - 1];
+            let textColor = valHealthSekarang < 60 ? "text-danger" : (valHealthSekarang < 85 ? "text-warning" : "text-success");
+            healthPopupContent = `
+                <h6 class="border-bottom pb-2">Hasil Prediksi AI Terakhir: <strong>${parseTanggalAman(lastLog.tgl_analisis)}</strong></h6>
+                <div class="row mt-2">
+                    <div class="col-5 text-muted fw-bold">Status ISO:</div>
+                    <div class="col-7 fw-bold ${textColor}">${lastLog.status_iso}</div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-5 text-muted fw-bold">Nilai Vibrasi:</div>
+                    <div class="col-7 fw-bold">${lastLog.nilai_vibrasi} mm/s</div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-5 text-muted fw-bold">Indikasi/Gejala:</div>
+                    <div class="col-7">${lastLog.indikasi}</div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-5 text-muted fw-bold">Rekomendasi:</div>
+                    <div class="col-7 text-primary">${lastLog.rekomendasi}</div>
+                </div>
+            `;
         }
+        
+        // Memasukkan konten ke dalam modal Health Index
+        document.getElementById('healthDetailTeks').innerHTML = healthPopupContent;
 
         document.getElementById('valHealth').innerText = valHealthSekarang + "%";
         if (valHealthSekarang < 60) { statusText = "Danger (Kritis)"; statusColor = "#e74c3c"; document.getElementById('valHealth').className = "kpi-value text-danger"; }
