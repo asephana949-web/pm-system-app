@@ -17,7 +17,7 @@
         .sidebar a { color: #bdc3c7; text-decoration: none; padding: 10px 20px; display: block; }
         .sidebar a:hover, .sidebar a.aktif { background-color: #34495e; color: white; border-left: 4px solid #3498db; }
         .ai-box { background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); color: white; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .upload-card { border: 2px dashed #cbd5e1; background-color: #f8fafc; border-radius: 8px; padding: 12px; text-align: center; }
+        .upload-card { border: 2px dashed #cbd5e1; background-color: #f8fafc; border-radius: 8px; padding: 12px; }
         
         .status-aman { background-color: #2ecc71; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;}
         .status-hati-hati { background-color: #f1c40f; color: black; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;}
@@ -65,18 +65,37 @@
             <div class="row mb-4">
                 <div class="col-md-5">
                     <div class="card shadow-sm border-0 h-100">
-                        <div class="card-header bg-white fw-bold p-3 border-bottom"><i class="fa-solid fa-cloud-arrow-up text-primary"></i> Input Dokumen & Screenshot Lapangan</div>
+                        <div class="card-header bg-white fw-bold p-3 border-bottom"><i class="fa-solid fa-cloud-arrow-up text-primary"></i> Parameter Aktual & Bukti Lapangan</div>
                         <div class="card-body">
                             <form id="formAnalisisGabungan" onsubmit="analisisDenganGabunganAI(event)">
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold small">Vibrasi Overall (mm/s):</label>
+                                        <input type="number" step="any" class="form-control form-control-sm" id="inputVibrasi" placeholder="Misal: 4.8" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold small">Gejala Spektrum (FFT):</label>
+                                        <select class="form-select form-select-sm" id="inputGejala" required>
+                                            <option value="">-- Pilih Dominasi --</option>
+                                            <option value="1X RPM Dominan">1X RPM (Radial/Axial)</option>
+                                            <option value="2X RPM Dominan">2X RPM / Harmonics</option>
+                                            <option value="Non-Synchronous">Non-Synchronous (BPFI/BPFO)</option>
+                                            <option value="Sub-Synchronous">Sub-Synchronous (< 1X RPM)</option>
+                                            <option value="Noise Floor Tinggi">Noise Floor Tinggi (Kavitasi/Gesekan)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
                                 <div class="mb-3">
-                                    <label class="form-label fw-bold small text-danger"><i class="fa-solid fa-file-pdf"></i> 1. Upload Laporan PDF (Trendline):</label>
-                                    <div class="upload-card"><input type="file" class="form-control form-control-sm" id="filePdf" accept=".pdf" required></div>
+                                    <label class="form-label fw-bold small text-danger"><i class="fa-solid fa-file-pdf"></i> Link Laporan / Dokumen (Opsional):</label>
+                                    <input type="url" class="form-control form-control-sm" id="filePdf" placeholder="https://drive.google.com/...">
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label fw-bold small text-info"><i class="fa-solid fa-image"></i> 2. Upload Screenshot Time Waveform / FFT (JPG/PNG):</label>
-                                    <div class="upload-card"><input type="file" class="form-control form-control-sm" id="fileScreenshot" accept="image/*" required></div>
+                                    <label class="form-label fw-bold small text-info"><i class="fa-solid fa-image"></i> Link Screenshot / Gambar (Opsional):</label>
+                                    <input type="url" class="form-control form-control-sm" id="fileScreenshot" placeholder="https://drive.google.com/...">
                                 </div>
-                                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" id="btnProsesAI"><i class="fa-solid fa-wand-magic-sparkles"></i> Analisis Gabungan AI & Simpan</button>
+                                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" id="btnProsesAI"><i class="fa-solid fa-wand-magic-sparkles"></i> Analisis Expert System & Simpan</button>
                             </form>
                         </div>
                     </div>
@@ -86,11 +105,11 @@
                     <div class="ai-box h-100 d-flex flex-column justify-content-between">
                         <div>
                             <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
-                                <h5 class="m-0 fw-bold"><i class="fa-solid fa-robot text-info"></i> Laporan Diagnostik AI Terintegrasi</h5>
+                                <h5 class="m-0 fw-bold"><i class="fa-solid fa-robot text-info"></i> Laporan Diagnostik Terintegrasi</h5>
                                 <span class="badge bg-secondary" id="badgeStatus">Siap Menganalisis</span>
                             </div>
                             <div id="kontenHasilAi">
-                                <p class="text-white-50">Silakan unggah dokumen PDF dan Screenshot JPG di samping. AI akan memvalidasi data menggunakan gabungan <b>TA Chart, ISO 10816-3, & Silabus Mobius Institute</b>.</p>
+                                <p class="text-white-50">Silakan masukkan angka vibrasi aktual dan gejala FFT di samping. Sistem pakar akan memvalidasi data menggunakan gabungan <b>TA Chart, ISO 10816-3, & Silabus Mobius Institute</b>.</p>
                             </div>
                         </div>
                         <div class="mt-3 pt-2 border-top border-light border-opacity-25">
@@ -129,7 +148,7 @@
                                             <th>Unit Mesin</th>
                                             <th>Status ISO</th>
                                             <th>Indikasi Kerusakan & Detail</th>
-                                            <th>Lampiran</th>
+                                            <th>Lampiran Berkas</th>
                                             <th class="text-center">Aksi</th>
                                         </tr>
                                     </thead>
@@ -143,26 +162,6 @@
                 </div>
             </div>
 
-        </div>
-    </div>
-</div>
-
-<!-- Modal Pratinjau File -->
-<div class="modal fade" id="modalPratinjauBerkas" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fa-solid fa-file-lines"></i> Pratinjau Berkas Lampiran</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-0 bg-light text-center" style="min-height: 380px; display: flex; align-items: center; justify-content: center;">
-                <div class="p-5">
-                    <div id="ikonPreviewBerkas" class="mb-3"></div>
-                    <h4 class="fw-bold text-dark" id="namaFilePreview">File</h4>
-                    <p class="text-muted small mb-0">Simulasi Pratinjau Berkas Lampiran.</p>
-                </div>
-            </div>
-            <div class="modal-footer bg-white"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button></div>
         </div>
     </div>
 </div>
@@ -184,7 +183,7 @@
     </div>
 </div>
 
-<!-- Modal Edit Log AI (Disederhanakan Tanpa HTML) -->
+<!-- Modal Edit Log AI -->
 <div class="modal fade" id="modalEditAI" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -269,7 +268,7 @@
 
         document.getElementById('badgeStatus').className = "badge bg-secondary";
         document.getElementById('badgeStatus').innerText = "Siap Menganalisis";
-        document.getElementById('kontenHasilAi').innerHTML = `<p class="text-white-50">Silakan unggah dokumen PDF dan Screenshot JPG di samping. AI akan memvalidasi data menggunakan gabungan <b>TA Chart, ISO 10816-3, & Silabus Mobius Institute</b>.</p>`;
+        document.getElementById('kontenHasilAi').innerHTML = `<p class="text-white-50">Silakan masukkan angka vibrasi aktual dan gejala FFT di samping. Sistem pakar akan memvalidasi data menggunakan gabungan <b>TA Chart, ISO 10816-3, & Silabus Mobius Institute</b>.</p>`;
     }
 
     function renderGrafikTrenDariDatabase(unitId, logs) {
@@ -323,6 +322,10 @@
             
             let diagFormatted = item.diagnosis_lengkap.replace(/</g, "&lt;").replace(/>/g, "&gt;"); 
             diagFormatted = diagFormatted.replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+            
+            // Logika untuk menampilkan Link Dokumen secara nyata
+            let linkPdf = (item.file_pdf && item.file_pdf !== '#' && item.file_pdf.includes('http')) ? `<a href="${item.file_pdf}" target="_blank" class="document-link" title="Buka Laporan PDF"><i class="fa-solid fa-file-pdf text-danger"></i></a>` : `<span class="text-muted"><i class="fa-solid fa-file-pdf"></i></span>`;
+            let linkImg = (item.file_gambar && item.file_gambar !== '#' && item.file_gambar.includes('http')) ? `<a href="${item.file_gambar}" target="_blank" class="document-link" title="Buka Gambar"><i class="fa-solid fa-image text-info"></i></a>` : `<span class="text-muted"><i class="fa-solid fa-image"></i></span>`;
 
             let row = `
                 <tr data-unit="${item.id_mesin}" data-tanggal="${String(item.tgl_analisis).substring(0,10)}">
@@ -335,9 +338,7 @@
                         <div class="d-none konten-rahasia">${diagFormatted}</div>
                     </td>
                     <td>
-                        <span class="document-link" onclick="bukaPratinjauBerkas('${item.file_pdf}', 'pdf')"><i class="fa-solid fa-file-pdf text-danger"></i></span> 
-                        <span class="text-muted">|</span> 
-                        <span class="document-link" onclick="bukaPratinjauBerkas('${item.file_gambar}', 'jpg')"><i class="fa-solid fa-image text-info"></i></span>
+                        ${linkPdf} <span class="text-muted mx-1">|</span> ${linkImg}
                     </td>
                     <td class="text-center text-nowrap">
                         <button class="btn btn-sm btn-warning py-0" onclick="bukaModalEditAI(${item.id})"><i class="fa-solid fa-pen"></i></button>
@@ -359,14 +360,12 @@
         new bootstrap.Modal(document.getElementById('modalEditAI')).show();
     }
 
-    // FUNGSI INI AKAN OTOMATIS MERAKIT ULANG KODE HTML
     function simpanEditLogAI(event) {
         event.preventDefault();
         const id = parseInt(document.getElementById('editID').value);
         const newIndikasi = document.getElementById('editIndikasi').value;
         const newRekomendasi = document.getElementById('editRekomendasi').value;
 
-        // Ambil data lama untuk referensi warna/status
         const item = dbLogsAI.find(x => x.id === id);
         
         let borderColor = "border-warning";
@@ -377,7 +376,6 @@
             iconClass = "fa-circle-xmark text-danger";
         }
 
-        // Rakit ulang HTML secara otomatis di sini
         const newHTML = `
             <h6 class="fw-bold text-dark mb-3"><i class="fa-solid ${iconClass}"></i> Diagnostik Terintegrasi: ${item.id_mesin}</h6>
             <div class="bg-light p-3 rounded mb-3 border ${borderColor}">
@@ -390,80 +388,102 @@
             </div>
         `;
 
-        const payload = {
-            indikasi: newIndikasi,
-            rekomendasi: newRekomendasi,
-            diagnosis: newHTML // String HTML bersih dikirim ke database
-        };
+        const payload = { indikasi: newIndikasi, rekomendasi: newRekomendasi, diagnosis: newHTML };
 
-        fetch('/api/ai-analysis/' + id, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        })
+        fetch('/api/ai-analysis/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
         .then(res => res.json())
         .then(res => {
             alert(res.message);
             bootstrap.Modal.getInstance(document.getElementById('modalEditAI')).hide();
-            muatDataLogAI(document.getElementById('pilihUnitAnalisis').value); // Reload Data
+            muatDataLogAI(document.getElementById('pilihUnitAnalisis').value); 
         })
         .catch(err => alert("Gagal menyimpan perubahan!"));
     }
 
     function hapusLogAI(id) {
-        if(confirm("Apakah Anda yakin ingin menghapus data laporan AI ini secara permanen?")) {
+        if(confirm("Apakah Anda yakin ingin menghapus data laporan ini secara permanen?")) {
             fetch('/api/ai-analysis/' + id, { method: 'DELETE' })
             .then(res => res.json())
             .then(res => {
                 alert(res.message);
-                muatDataLogAI(document.getElementById('pilihUnitAnalisis').value); // Reload Data
+                muatDataLogAI(document.getElementById('pilihUnitAnalisis').value);
             });
         }
     }
 
+    // FUNGSI ANALISIS CERDAS BERBASIS RULE (ISO 10816-3)
     function analisisDenganGabunganAI(event) {
         event.preventDefault();
         const unitId = document.getElementById('pilihUnitAnalisis').value;
         if(!unitId) return alert("Pilih unit mesin terlebih dahulu!");
 
-        const pdfInput = document.getElementById('filePdf');
-        const ssInput = document.getElementById('fileScreenshot');
-        if(pdfInput.files.length === 0 || ssInput.files.length === 0) return alert("Harap unggah berkas lengkap!");
+        const inputVib = parseFloat(document.getElementById('inputVibrasi').value);
+        const inputGejala = document.getElementById('inputGejala').value;
+        const linkPdf = document.getElementById('filePdf').value || "#";
+        const linkSs = document.getElementById('fileScreenshot').value || "#";
 
         const btnProses = document.getElementById('btnProsesAI');
         const badge = document.getElementById('badgeStatus');
         const hasil = document.getElementById('kontenHasilAi');
 
         btnProses.disabled = true;
-        badge.className = "badge bg-info text-dark"; badge.innerText = "Menganalisis Terintegrasi...";
-        hasil.innerHTML = `<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin fs-1 text-info"></i><p class="mt-2 text-white">Memproses *Machine Vision* dan Validasi Standar ISO & TA Chart...</p></div>`;
+        badge.className = "badge bg-info text-dark"; badge.innerText = "Sistem Sedang Menghitung...";
+        hasil.innerHTML = `<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin fs-1 text-info"></i><p class="mt-2 text-white">Mengevaluasi Parameter ISO 10816-3 & Standar Mobius...</p></div>`;
 
         setTimeout(() => {
             const tglHariIni = new Date().toISOString().split('T')[0];
-            const randomAI = Math.random();
-            let p_status = "", p_nilai = 0, p_indikasi = "", p_htmlDetail = "", p_rek = "";
             
-            if (randomAI < 0.33) {
-                p_indikasi = "1X RPM Radial Dominan (TA Chart: Mass Unbalance)";
-                p_rek = "Lakukan pembersihan rotor dan jadwalkan Dynamic Balancing.";
-                p_nilai = parseFloat((Math.random() * (6.9 - 4.6) + 4.6).toFixed(1)); 
+            let p_status = "", p_indikasi = "", p_htmlDetail = "", p_rek = "";
+            let borderColor = "", iconClass = "";
+            
+            // Penentuan Status berdasarkan ISO 10816-3 (Rigid Foundation Assumption)
+            if (inputVib <= 2.8) {
+                p_status = "Zone A/B (Aman)";
+                borderColor = "border-success"; iconClass = "fa-circle-check text-success";
+            } else if (inputVib <= 4.5) {
                 p_status = "Zone C (Waspada)";
-                p_htmlDetail = `<h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-circle-exclamation text-warning"></i> Diagnostik Terintegrasi: ${unitId}</h6><div class="bg-light p-3 rounded mb-3 border border-warning"><p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p><p class="small mb-0">${p_indikasi}</p></div><div class="bg-light p-3 rounded border border-warning"><p class="fw-bold mb-2">Rekomendasi (Korektif):</p><p class="small mb-0">${p_rek}</p></div>`;
-            } else if (randomAI < 0.66) {
-                p_indikasi = "2X RPM Axial Dominan + 180° (TA Chart: Angular Misalignment)";
-                p_rek = "Lakukan Laser Shaft Alignment dan periksa Soft Foot.";
-                p_nilai = parseFloat((Math.random() * (12.0 - 7.2) + 7.2).toFixed(1)); 
-                p_status = "Zone D (Berbahaya)";
-                p_htmlDetail = `<h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-circle-xmark text-danger"></i> Diagnostik Terintegrasi: ${unitId}</h6><div class="bg-light p-3 rounded mb-3 border border-danger"><p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p><p class="small mb-0">${p_indikasi}</p></div><div class="bg-light p-3 rounded border border-danger"><p class="fw-bold mb-2">Rekomendasi (Korektif):</p><p class="small mb-0">${p_rek}</p></div>`;
+                borderColor = "border-warning"; iconClass = "fa-circle-exclamation text-warning";
             } else {
-                p_indikasi = "Spektrum Non-Synchronous (Mobius: BPFI Bearing Defect)";
-                p_rek = "Jadwalkan penggantian Bearing secepatnya.";
-                p_nilai = parseFloat((Math.random() * (10.0 - 7.2) + 7.2).toFixed(1)); 
                 p_status = "Zone D (Berbahaya)";
-                p_htmlDetail = `<h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-circle-xmark text-danger"></i> Diagnostik Terintegrasi: ${unitId}</h6><div class="bg-light p-3 rounded mb-3 border border-danger"><p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p><p class="small mb-0">${p_indikasi}</p></div><div class="bg-light p-3 rounded border border-danger"><p class="fw-bold mb-2">Rekomendasi (Korektif):</p><p class="small mb-0">${p_rek}</p></div>`;
+                borderColor = "border-danger"; iconClass = "fa-circle-xmark text-danger";
             }
+
+            // Penentuan Analisis Pakar (Expert System) berdasarkan input Gejala FFT
+            if (inputVib <= 2.8) {
+                p_indikasi = `Vibrasi (${inputVib} mm/s) masih dalam batas wajar. Gejala: ${inputGejala}.`;
+                p_rek = "Lanjutkan pemantauan ruting sesuai jadwal Preventive Maintenance.";
+            } else {
+                if (inputGejala === "1X RPM Dominan") {
+                    p_indikasi = `Vibrasi ${inputVib} mm/s (Alarm). Puncak dominan di 1X RPM radial/axial mengindikasikan adanya Unbalance pada rotor atau bent bent shaft.`;
+                    p_rek = "Bersihkan impeller/rotor. Lakukan inspeksi visual keausan. Siapkan penjadwalan Dynamic Balancing.";
+                } else if (inputGejala === "2X RPM Dominan") {
+                    p_indikasi = `Vibrasi ${inputVib} mm/s (Alarm). Puncak 2X RPM atau harmonics yang tinggi merupakan indikasi kuat dari Misalignment atau masalah kopling.`;
+                    p_rek = "Jadwalkan Alignment ulang menggunakan Laser Alignment. Periksa kondisi karet/elemen kopling & Soft Foot.";
+                } else if (inputGejala === "Non-Synchronous") {
+                    p_indikasi = `Vibrasi ${inputVib} mm/s. Terdapat frekuensi non-synchronous (BPFI, BPFO, BSF) yang mengindikasikan keausan/cacat pada elemen Rolling Element Bearing.`;
+                    p_rek = "Periksa temperatur bearing & tambah pelumas. Persiapkan order sparepart bearing dan jadwalkan penggantian secepatnya.";
+                } else if (inputGejala === "Sub-Synchronous") {
+                    p_indikasi = `Vibrasi ${inputVib} mm/s. Puncak di bawah 1X RPM (misal 0.4X - 0.8X) menandakan adanya kelonggaran struktural, Oil Whirl, atau gesekan belt.`;
+                    p_rek = "Lakukan pengencangan baut fondasi (Tightening). Periksa tegangan V-Belt (jika ada) dan periksa level oli lubrikasi.";
+                } else {
+                    p_indikasi = `Vibrasi ${inputVib} mm/s. Spektrum acak atau noise floor tinggi mengindikasikan kavitasi pompa, aliran turbulen, atau keausan bearing tahap akhir.`;
+                    p_rek = "Cek tekanan hisap (suction) untuk memastikan tidak ada kavitasi. Periksa filter dan pastikan aliran fluida normal.";
+                }
+            }
+
+            p_htmlDetail = `
+                <h6 class="fw-bold text-dark mb-3"><i class="fa-solid ${iconClass}"></i> Diagnostik Terintegrasi: ${unitId}</h6>
+                <div class="bg-light p-3 rounded mb-3 border ${borderColor}">
+                    <p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p>
+                    <p class="small mb-0">${p_indikasi}</p>
+                </div>
+                <div class="bg-light p-3 rounded border ${borderColor}">
+                    <p class="fw-bold mb-2">Rekomendasi (Korektif):</p>
+                    <p class="small mb-0">${p_rek}</p>
+                </div>
+            `;
             
-            let kotakStatusColor = p_nilai > 7.1 ? "bg-danger" : "bg-warning text-dark";
+            let kotakStatusColor = p_status.includes("Berbahaya") ? "bg-danger" : (p_status.includes("Waspada") ? "bg-warning text-dark" : "bg-success");
             badge.className = "badge " + kotakStatusColor; badge.innerText = p_status;
             hasil.innerHTML = `<div class="text-white">${p_htmlDetail.replace(/bg-light/g, 'bg-dark bg-opacity-50 text-white').replace(/text-dark/g, 'text-white')}</div>`;
 
@@ -471,12 +491,12 @@
                 id_mesin: unitId,
                 tgl_analisis: tglHariIni,
                 status_iso: p_status,
-                nilai_vibrasi: p_nilai,
+                nilai_vibrasi: inputVib,
                 indikasi: p_indikasi,
                 diagnosis_lengkap: p_htmlDetail, 
                 rekomendasi: p_rek,
-                file_pdf: pdfInput.files[0].name,
-                file_gambar: ssInput.files[0].name
+                file_pdf: linkPdf,
+                file_gambar: linkSs
             };
 
             fetch('/api/ai-analysis', {
@@ -488,23 +508,16 @@
             .then(response => {
                 muatDataLogAI(unitId);
                 btnProses.disabled = false;
-                document.getElementById('filePdf').value = "";
-                document.getElementById('fileScreenshot').value = "";
+                document.getElementById('formAnalisisGabungan').reset();
             })
             .catch(err => {
                 alert("Gagal menyimpan ke database!");
                 btnProses.disabled = false;
             });
 
-        }, 2000);
+        }, 1500);
     }
 
-    function bukaPratinjauBerkas(namaFile, jenisFile) {
-        document.getElementById('namaFilePreview').innerText = namaFile;
-        document.getElementById('ikonPreviewBerkas').innerHTML = (jenisFile === 'pdf') ? '<i class="fa-solid fa-file-pdf fa-4x text-danger"></i>' : '<i class="fa-solid fa-file-image fa-4x text-info"></i>';
-        new bootstrap.Modal(document.getElementById('modalPratinjauBerkas')).show();
-    }
-    
     function bukaModalDetail(tombol) {
         const tr = tombol.closest('tr');
         document.getElementById('modalBodyKonten').innerHTML = tr.querySelector('.konten-rahasia').innerHTML;
