@@ -1,11 +1,25 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_cors import CORS
 import pymysql
+import json
+import google.generativeai as genai
 
 app = Flask(__name__)
 app.secret_key = 'kunci_rahasia_sangat_aman'
 CORS(app)
 
+# ==========================================
+# KONFIGURASI GEMINI AI
+# ==========================================
+# Ganti teks di bawah ini dengan API Key Anda yang asli!
+API_KEY_GEMINI = "MASUKKAN_API_KEY_ANDA_DISINI"
+genai.configure(api_key=API_KEY_GEMINI)
+# Menggunakan Gemini 1.5 Flash (Super cepat dan 100% Gratis)
+model_ai = genai.GenerativeModel('gemini-1.5-flash')
+
+# ==========================================
+# KONFIGURASI DATABASE
+# ==========================================
 DB_CONFIG = {
     'host': 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
     'port': 4000,
@@ -84,6 +98,48 @@ def ai_analysis():
     return render_template('ai_analysis.html')
 
 # ==========================================
+# API BARU: GENERATE GEMINI AI (ANALISIS)
+# ==========================================
+@app.route('/api/generate-ai', methods=['POST'])
+def generate_ai_diagnosis():
+    if 'loggedin' not in session: return jsonify({"error": "Belum login"}), 403
+    data = request.json
+    vib = data.get('vibrasi')
+    gejala = data.get('gejala')
+    
+    # Prompt khusus yang merubah Gemini menjadi Pakar Vibrasi
+    prompt = f"""
+    Anda adalah seorang insinyur Pakar Analisis Vibrasi Mesin Industri (berpedoman pada ISO 10816-3 & Mobius Institute).
+    Sebuah mesin menunjukkan nilai vibrasi overall sebesar {vib} mm/s (berbasis Rigid Foundation).
+    Gejala spektrum (FFT) dominan yang diamati oleh teknisi di lapangan adalah: "{gejala}".
+
+    Tugas Anda:
+    1. Tentukan Status ISO 10816-3 (Pilih salah satu persis seperti ini: "Zone A/B (Aman)", "Zone C (Waspada)", atau "Zone D (Berbahaya)").
+    2. Berikan "Indikasi" masalah (maksimal 2 kalimat) berdasarkan perpaduan nilai vibrasi dan gejala FFT tersebut.
+    3. Berikan "Rekomendasi" teknis (maksimal 2 kalimat) mengenai tindakan maintenance korektif apa yang harus segera dilakukan mekanik.
+
+    PENTING: Output Anda HARUS murni berbentuk JSON format seperti di bawah ini, tanpa teks pengantar, dan tanpa penanda markdown (```json).
+    {{
+        "status_iso": "Zone C (Waspada)",
+        "indikasi": "Terdapat unbalance ...",
+        "rekomendasi": "Lakukan pembersihan ..."
+    }}
+    """
+    
+    try:
+        response = model_ai.generate_content(prompt)
+        ai_teks = response.text.strip()
+        
+        # Membersihkan format markdown jika AI membandel
+        if ai_teks.startswith("```json"): ai_teks = ai_teks[7:-3].strip()
+        elif ai_teks.startswith("```"): ai_teks = ai_teks[3:-3].strip()
+        
+        hasil_json = json.loads(ai_teks)
+        return jsonify({"status": "success", "data": hasil_json})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# ==========================================
 # API: MASTER MESIN
 # ==========================================
 @app.route('/api/master-mesin', methods=['GET'])
@@ -150,7 +206,6 @@ def selesaikan_jadwal(id):
 
             cursor.execute("UPDATE jadwal_pm SET status='Completed' WHERE id=%s", (id,))
             
-            # TAMBAHAN BARU: Menangkap is_downtime dan downtime_jam
             is_dt = data.get('is_downtime', 'Tidak')
             dt_jam = data.get('downtime_jam', 0)
             if not dt_jam or str(dt_jam).strip() == '': dt_jam = 0
@@ -233,7 +288,7 @@ def manage_riwayat_id(id):
         conn.close()
 
 # ==========================================
-# API BARU: LOG AI ANALYSIS
+# API: LOG AI ANALYSIS
 # ==========================================
 @app.route('/api/ai-analysis', methods=['GET', 'POST'])
 def handle_ai_analysis():
@@ -241,7 +296,6 @@ def handle_ai_analysis():
     try:
         with conn.cursor() as cursor:
             if request.method == 'GET':
-                # Jika diminta ID tertentu, kirimkan khusus ID itu. Jika tidak, kirim semua.
                 id_mesin = request.args.get('id_mesin')
                 if id_mesin:
                     cursor.execute("SELECT * FROM log_ai_analysis WHERE id_mesin = %s ORDER BY tgl_analisis ASC", (id_mesin,))
@@ -263,7 +317,7 @@ def handle_ai_analysis():
                 return jsonify({"status": "success", "message": "Log Analisis AI berhasil disimpan secara permanen!"})
     finally:
         conn.close()
-        
+
 @app.route('/api/ai-analysis/<int:id>', methods=['PUT', 'DELETE'])
 def manage_ai_analysis_id(id):
     if session.get('role') != 'Admin': return jsonify({"status": "error", "message": "Akses Ditolak!"}), 403
@@ -286,5 +340,5 @@ def manage_ai_analysis_id(id):
         conn.close()
 
 if __name__ == '__main__':
-    print("🚀 Server Backend PM System Berjalan di: http://127.0.0.1:5000")
+    print("🚀 Server Backend PM System Berjalan di: [http://127.0.0.1:5000](http://127.0.0.1:5000)")
     app.run(debug=True, port=5000)
