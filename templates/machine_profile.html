@@ -43,7 +43,9 @@
             <a href="/machine-profile" class="aktif"><i class="fa-solid fa-server"></i> Machine Profile</a>
             <a href="/pm-schedule"><i class="fa-solid fa-calendar-check"></i> PM Schedule</a>
             <a href="/machine-history"><i class="fa-solid fa-clock-rotate-left"></i> Machine History</a>
+            {% if session.role == 'Admin' %}
             <a href="/ai-analysis"><i class="fa-solid fa-brain"></i> AI Analysis</a>
+            {% endif %}
             <a href="/logout" class="text-danger mt-4"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
         </div>
 
