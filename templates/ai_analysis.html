@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analisis AI & Tren Vibrasi - PM System</title>
     
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="[https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css](https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css)" rel="stylesheet">
+    <link rel="stylesheet" href="[https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css](https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css)">
     
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <link href="[https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css](https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css)" rel="stylesheet" />
+    <link href="[https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css](https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css)" rel="stylesheet" />
     
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -52,7 +52,7 @@
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
                 <div>
                     <h2 class="m-0">Pusat Analisis AI & Riwayat Diagnosa Unit</h2>
-                    <small class="text-muted">Evaluasi berbasis TA Chart, Standar ISO 10816-3, & Silabus Mobius Institute.</small>
+                    <small class="text-muted">Evaluasi berbasis TA Chart, Standar ISO 10816-3, & Silabus Mobius Institute (Powered by Gemini AI).</small>
                 </div>
                 <div class="d-flex align-items-center gap-2 bg-white border p-3 rounded shadow-sm" style="min-width: 450px;">
                     <label class="fw-bold m-0 text-nowrap"><i class="fa-solid fa-magnifying-glass text-primary"></i> Pilih Unit Global:</label>
@@ -76,26 +76,21 @@
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label fw-bold small">Gejala Spektrum (FFT):</label>
-                                        <select class="form-select form-select-sm" id="inputGejala" required>
-                                            <option value="">-- Pilih Dominasi --</option>
-                                            <option value="1X RPM Dominan">1X RPM (Radial/Axial)</option>
-                                            <option value="2X RPM Dominan">2X RPM / Harmonics</option>
-                                            <option value="Non-Synchronous">Non-Synchronous (BPFI/BPFO)</option>
-                                            <option value="Sub-Synchronous">Sub-Synchronous (< 1X RPM)</option>
-                                            <option value="Noise Floor Tinggi">Noise Floor Tinggi (Kavitasi/Gesekan)</option>
-                                        </select>
+                                        <input type="text" class="form-control form-control-sm" id="inputGejala" placeholder="Ketik gejala (misal: Ada puncak tinggi di 1X RPM)" required>
                                     </div>
                                 </div>
 
                                 <div class="mb-3">
                                     <label class="form-label fw-bold small text-danger"><i class="fa-solid fa-file-pdf"></i> Link Laporan / Dokumen (Opsional):</label>
-                                    <input type="url" class="form-control form-control-sm" id="filePdf" placeholder="https://drive.google.com/...">
+                                    <input type="url" class="form-control form-control-sm" id="filePdf" placeholder="[https://drive.google.com/](https://drive.google.com/)...">
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label fw-bold small text-info"><i class="fa-solid fa-image"></i> Link Screenshot / Gambar (Opsional):</label>
-                                    <input type="url" class="form-control form-control-sm" id="fileScreenshot" placeholder="https://drive.google.com/...">
+                                    <input type="url" class="form-control form-control-sm" id="fileScreenshot" placeholder="[https://drive.google.com/](https://drive.google.com/)...">
                                 </div>
-                                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" id="btnProsesAI"><i class="fa-solid fa-wand-magic-sparkles"></i> Analisis Expert System & Simpan</button>
+                                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" id="btnProsesAI">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i> Analisis dengan Gemini AI & Simpan
+                                </button>
                             </form>
                         </div>
                     </div>
@@ -109,11 +104,11 @@
                                 <span class="badge bg-secondary" id="badgeStatus">Siap Menganalisis</span>
                             </div>
                             <div id="kontenHasilAi">
-                                <p class="text-white-50">Silakan masukkan angka vibrasi aktual dan gejala FFT di samping. Sistem pakar akan memvalidasi data menggunakan gabungan <b>TA Chart, ISO 10816-3, & Silabus Mobius Institute</b>.</p>
+                                <p class="text-white-50">Silakan masukkan angka vibrasi aktual dan gejala FFT di samping. <b>Google Gemini AI</b> akan memvalidasi data menggunakan gabungan <b>TA Chart, ISO 10816-3, & Silabus Mobius Institute</b> secara otomatis dan cerdas.</p>
                             </div>
                         </div>
                         <div class="mt-3 pt-2 border-top border-light border-opacity-25">
-                            <small class="text-white-50"><i class="fa-solid fa-graduation-cap text-warning"></i> <b>Referensi:</b> TA Diagnostic Chart, ISO 10816-3, & Mobius Institute (Fault Templates).</small>
+                            <small class="text-white-50"><i class="fa-solid fa-graduation-cap text-warning"></i> <b>Powered by:</b> Gemini 1.5 Pro | <b>Referensi:</b> TA Diagnostic Chart, ISO 10816-3, & Mobius Institute.</small>
                         </div>
                     </div>
                 </div>
@@ -214,10 +209,10 @@
 </div>
 
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="[https://code.jquery.com/jquery-3.6.0.min.js](https://code.jquery.com/jquery-3.6.0.min.js)"></script>
+<script src="[https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js](https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js)"></script>
+<script src="[https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js](https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js)"></script>
+<script src="[https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js](https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js)"></script>
 
 <script>
     let dbMaster = [];
@@ -268,7 +263,7 @@
 
         document.getElementById('badgeStatus').className = "badge bg-secondary";
         document.getElementById('badgeStatus').innerText = "Siap Menganalisis";
-        document.getElementById('kontenHasilAi').innerHTML = `<p class="text-white-50">Silakan masukkan angka vibrasi aktual dan gejala FFT di samping. Sistem pakar akan memvalidasi data menggunakan gabungan <b>TA Chart, ISO 10816-3, & Silabus Mobius Institute</b>.</p>`;
+        document.getElementById('kontenHasilAi').innerHTML = `<p class="text-white-50">Silakan masukkan angka vibrasi aktual dan gejala FFT di samping. <b>Google Gemini AI</b> akan memvalidasi data menggunakan gabungan <b>TA Chart, ISO 10816-3, & Silabus Mobius Institute</b> secara otomatis dan cerdas.</p>`;
     }
 
     function renderGrafikTrenDariDatabase(unitId, logs) {
@@ -323,7 +318,6 @@
             let diagFormatted = item.diagnosis_lengkap.replace(/</g, "&lt;").replace(/>/g, "&gt;"); 
             diagFormatted = diagFormatted.replace(/&lt;/g, "<").replace(/&gt;/g, ">");
             
-            // Logika untuk menampilkan Link Dokumen secara nyata
             let linkPdf = (item.file_pdf && item.file_pdf !== '#' && item.file_pdf.includes('http')) ? `<a href="${item.file_pdf}" target="_blank" class="document-link" title="Buka Laporan PDF"><i class="fa-solid fa-file-pdf text-danger"></i></a>` : `<span class="text-muted"><i class="fa-solid fa-file-pdf"></i></span>`;
             let linkImg = (item.file_gambar && item.file_gambar !== '#' && item.file_gambar.includes('http')) ? `<a href="${item.file_gambar}" target="_blank" class="document-link" title="Buka Gambar"><i class="fa-solid fa-image text-info"></i></a>` : `<span class="text-muted"><i class="fa-solid fa-image"></i></span>`;
 
@@ -411,7 +405,7 @@
         }
     }
 
-    // FUNGSI ANALISIS CERDAS BERBASIS RULE (ISO 10816-3)
+    // FUNGSI BARU: BERKOMUNIKASI DENGAN BACKEND (GEMINI AI API)
     function analisisDenganGabunganAI(event) {
         event.preventDefault();
         const unitId = document.getElementById('pilihUnitAnalisis').value;
@@ -427,52 +421,38 @@
         const hasil = document.getElementById('kontenHasilAi');
 
         btnProses.disabled = true;
-        badge.className = "badge bg-info text-dark"; badge.innerText = "Sistem Sedang Menghitung...";
-        hasil.innerHTML = `<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin fs-1 text-info"></i><p class="mt-2 text-white">Mengevaluasi Parameter ISO 10816-3 & Standar Mobius...</p></div>`;
+        badge.className = "badge bg-info text-dark"; badge.innerText = "Gemini AI Sedang Berpikir...";
+        hasil.innerHTML = `<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin fs-1 text-info"></i><p class="mt-2 text-white">Menghubungkan ke Otak Google Gemini API...</p></div>`;
 
-        setTimeout(() => {
+        // 1. Minta Analisis ke Backend (Gemini)
+        fetch('/api/generate-ai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vibrasi: inputVib, gejala: inputGejala })
+        })
+        .then(res => res.json())
+        .then(ai_response => {
+            if (ai_response.status !== 'success') {
+                alert("Gagal menghubungi AI: " + ai_response.message);
+                btnProses.disabled = false;
+                hasil.innerHTML = `<p class="text-danger">Koneksi AI Gagal atau Timeout.</p>`;
+                return;
+            }
+            
             const tglHariIni = new Date().toISOString().split('T')[0];
+            const dataAI = ai_response.data; // Menerima JSON dari Gemini
             
-            let p_status = "", p_indikasi = "", p_htmlDetail = "", p_rek = "";
-            let borderColor = "", iconClass = "";
-            
-            // Penentuan Status berdasarkan ISO 10816-3 (Rigid Foundation Assumption)
-            if (inputVib <= 2.8) {
-                p_status = "Zone A/B (Aman)";
-                borderColor = "border-success"; iconClass = "fa-circle-check text-success";
-            } else if (inputVib <= 4.5) {
-                p_status = "Zone C (Waspada)";
-                borderColor = "border-warning"; iconClass = "fa-circle-exclamation text-warning";
-            } else {
-                p_status = "Zone D (Berbahaya)";
-                borderColor = "border-danger"; iconClass = "fa-circle-xmark text-danger";
-            }
+            const p_status = dataAI.status_iso || "Zone A/B (Aman)";
+            const p_indikasi = dataAI.indikasi || "Gejala terbaca normal.";
+            const p_rek = dataAI.rekomendasi || "Lanjutkan pemantauan ruting.";
 
-            // Penentuan Analisis Pakar (Expert System) berdasarkan input Gejala FFT
-            if (inputVib <= 2.8) {
-                p_indikasi = `Vibrasi (${inputVib} mm/s) masih dalam batas wajar. Gejala: ${inputGejala}.`;
-                p_rek = "Lanjutkan pemantauan ruting sesuai jadwal Preventive Maintenance.";
-            } else {
-                if (inputGejala === "1X RPM Dominan") {
-                    p_indikasi = `Vibrasi ${inputVib} mm/s (Alarm). Puncak dominan di 1X RPM radial/axial mengindikasikan adanya Unbalance pada rotor atau bent bent shaft.`;
-                    p_rek = "Bersihkan impeller/rotor. Lakukan inspeksi visual keausan. Siapkan penjadwalan Dynamic Balancing.";
-                } else if (inputGejala === "2X RPM Dominan") {
-                    p_indikasi = `Vibrasi ${inputVib} mm/s (Alarm). Puncak 2X RPM atau harmonics yang tinggi merupakan indikasi kuat dari Misalignment atau masalah kopling.`;
-                    p_rek = "Jadwalkan Alignment ulang menggunakan Laser Alignment. Periksa kondisi karet/elemen kopling & Soft Foot.";
-                } else if (inputGejala === "Non-Synchronous") {
-                    p_indikasi = `Vibrasi ${inputVib} mm/s. Terdapat frekuensi non-synchronous (BPFI, BPFO, BSF) yang mengindikasikan keausan/cacat pada elemen Rolling Element Bearing.`;
-                    p_rek = "Periksa temperatur bearing & tambah pelumas. Persiapkan order sparepart bearing dan jadwalkan penggantian secepatnya.";
-                } else if (inputGejala === "Sub-Synchronous") {
-                    p_indikasi = `Vibrasi ${inputVib} mm/s. Puncak di bawah 1X RPM (misal 0.4X - 0.8X) menandakan adanya kelonggaran struktural, Oil Whirl, atau gesekan belt.`;
-                    p_rek = "Lakukan pengencangan baut fondasi (Tightening). Periksa tegangan V-Belt (jika ada) dan periksa level oli lubrikasi.";
-                } else {
-                    p_indikasi = `Vibrasi ${inputVib} mm/s. Spektrum acak atau noise floor tinggi mengindikasikan kavitasi pompa, aliran turbulen, atau keausan bearing tahap akhir.`;
-                    p_rek = "Cek tekanan hisap (suction) untuk memastikan tidak ada kavitasi. Periksa filter dan pastikan aliran fluida normal.";
-                }
-            }
+            let borderColor = "border-success"; let iconClass = "fa-circle-check text-success";
+            if(p_status.includes("Waspada")) { borderColor = "border-warning"; iconClass = "fa-circle-exclamation text-warning"; }
+            if(p_status.includes("Berbahaya")) { borderColor = "border-danger"; iconClass = "fa-circle-xmark text-danger"; }
 
-            p_htmlDetail = `
-                <h6 class="fw-bold text-dark mb-3"><i class="fa-solid ${iconClass}"></i> Diagnostik Terintegrasi: ${unitId}</h6>
+            // Merakit output untuk layar hitam
+            const p_htmlDetail = `
+                <h6 class="fw-bold text-dark mb-3"><i class="fa-solid ${iconClass}"></i> Diagnostik AI Terintegrasi (Powered by Gemini): ${unitId}</h6>
                 <div class="bg-light p-3 rounded mb-3 border ${borderColor}">
                     <p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p>
                     <p class="small mb-0">${p_indikasi}</p>
@@ -487,6 +467,7 @@
             badge.className = "badge " + kotakStatusColor; badge.innerText = p_status;
             hasil.innerHTML = `<div class="text-white">${p_htmlDetail.replace(/bg-light/g, 'bg-dark bg-opacity-50 text-white').replace(/text-dark/g, 'text-white')}</div>`;
 
+            // 2. Simpan Hasil Analisis ke Database TiDB
             let payload = {
                 id_mesin: unitId,
                 tgl_analisis: tglHariIni,
@@ -499,23 +480,27 @@
                 file_gambar: linkSs
             };
 
-            fetch('/api/ai-analysis', {
+            return fetch('/api/ai-analysis', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
-            })
-            .then(res => res.json())
-            .then(response => {
-                muatDataLogAI(unitId);
-                btnProses.disabled = false;
-                document.getElementById('formAnalisisGabungan').reset();
-            })
-            .catch(err => {
-                alert("Gagal menyimpan ke database!");
-                btnProses.disabled = false;
             });
-
-        }, 1500);
+        })
+        .then(res => {
+            if(!res) return;
+            return res.json();
+        })
+        .then(response => {
+            if(!response) return;
+            muatDataLogAI(unitId);
+            btnProses.disabled = false;
+            document.getElementById('formAnalisisGabungan').reset();
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Terjadi kesalahan saat memproses data AI!");
+            btnProses.disabled = false;
+        });
     }
 
     function bukaModalDetail(tombol) {
