@@ -1,31 +1,33 @@
+import os
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_cors import CORS
 import pymysql
 import json
-import google.generativeai as genai
+from google import genai
 
 app = Flask(__name__)
-app.secret_key = 'kunci_rahasia_sangat_aman'
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'kunci_rahasia_sangat_aman')
 CORS(app)
 
 # ==========================================
-# KONFIGURASI GEMINI AI
+# KONFIGURASI GEMINI AI (SDK BARU: google-genai)
 # ==========================================
-# Ganti teks di bawah ini dengan API Key Anda yang asli!
-API_KEY_GEMINI = "MASUKKAN_API_KEY_ANDA_DISINI"
-genai.configure(api_key=API_KEY_GEMINI)
-# Menggunakan Gemini 1.5 Flash (Super cepat dan 100% Gratis)
-model_ai = genai.GenerativeModel('gemini-1.5-flash')
+# Key dibaca dari Environment Variable GEMINI_API_KEY di Vercel.
+# Jangan pernah menuliskan key asli langsung di file ini!
+client_ai = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+# Alias resmi Google yang otomatis mengikuti model Flash stabil terbaru,
+# supaya kode ini tidak perlu diubah lagi setiap Google memensiunkan versi model.
+MODEL_AI = "gemini-flash-latest"
 
 # ==========================================
-# KONFIGURASI DATABASE
+# KONFIGURASI DATABASE (dibaca dari Environment Variable di Vercel)
 # ==========================================
 DB_CONFIG = {
-    'host': 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
-    'port': 4000,
-    'user': '4VXEw9XhvX4uvwp.root',
-    'password': 'hSNLRRYkNh6WdA3m',
-    'database': 'db_pm_system',
+    'host': os.environ.get('DB_HOST'),
+    'port': int(os.environ.get('DB_PORT', 4000)),
+    'user': os.environ.get('DB_USER'),
+    'password': os.environ.get('DB_PASSWORD'),
+    'database': os.environ.get('DB_NAME'),
     'ssl': {
         'ssl_verify_cert': True,
         'ssl_verify_identity': True
@@ -127,7 +129,10 @@ def generate_ai_diagnosis():
     """
     
     try:
-        response = model_ai.generate_content(prompt)
+        response = client_ai.models.generate_content(
+            model=MODEL_AI,
+            contents=prompt
+        )
         ai_teks = response.text.strip()
         
         # Membersihkan format markdown jika AI membandel
