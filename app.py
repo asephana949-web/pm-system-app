@@ -1,4 +1,5 @@
 import os
+import time
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_cors import CORS
 import pymysql
@@ -128,21 +129,47 @@ def generate_ai_diagnosis():
     }}
     """
     
-    try:
-        response = client_ai.models.generate_content(
-            model=MODEL_AI,
-            contents=prompt
-        )
-        ai_teks = response.text.strip()
-        
-        # Membersihkan format markdown jika AI membandel
-        if ai_teks.startswith("```json"): ai_teks = ai_teks[7:-3].strip()
-        elif ai_teks.startswith("```"): ai_teks = ai_teks[3:-3].strip()
-        
-        hasil_json = json.loads(ai_teks)
-        return jsonify({"status": "success", "data": hasil_json})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+    # Retry otomatis khusus untuk error 503 (model Gemini sedang sibuk/high demand).
+    # Percobaan ke-1: langsung. Percobaan ke-2: tunggu 2 detik. Percobaan ke-3: tunggu 4 detik.
+    MAX_PERCOBAAN = 3
+    error_terakhir = None
+
+    for percobaan in range(1, MAX_PERCOBAAN + 1):
+        try:
+            response = client_ai.models.generate_content(
+                model=MODEL_AI,
+                contents=prompt
+            )
+            ai_teks = response.text.strip()
+
+            # Membersihkan format markdown jika AI membandel
+            if ai_teks.startswith("```json"): ai_teks = ai_teks[7:-3].strip()
+            elif ai_teks.startswith("```"): ai_teks = ai_teks[3:-3].strip()
+
+            hasil_json = json.loads(ai_teks)
+            return jsonify({"status": "success", "data": hasil_json})
+
+        except Exception as e:
+            error_terakhir = e
+            pesan_error = str(e)
+
+            # Cek apakah ini error 503/UNAVAILABLE (server Gemini sedang sibuk) -> layak dicoba ulang.
+            # Kalau errornya jenis lain (misal API key salah, JSON tidak valid), langsung berhenti, tidak perlu retry.
+            sedang_sibuk = ("503" in pesan_error) or ("UNAVAILABLE" in pesan_error) or ("overloaded" in pesan_error.lower())
+
+            if sedang_sibuk and percobaan < MAX_PERCOBAAN:
+                jeda_detik = 2 * percobaan  # 2 detik, lalu 4 detik
+                time.sleep(jeda_detik)
+                continue  # coba lagi dari awal loop
+            else:
+                # Bukan error 503, atau sudah percobaan terakhir -> menyerah dan lapor ke frontend.
+                break
+
+    pesan_gagal = "Model AI sedang mengalami permintaan tinggi (sibuk). Sudah dicoba ulang beberapa kali, silakan coba lagi dalam beberapa menit."
+    if error_terakhir and not (("503" in str(error_terakhir)) or ("UNAVAILABLE" in str(error_terakhir))):
+        pesan_gagal = str(error_terakhir)
+
+    return jsonify({"status": "error", "message": pesan_gagal}), 500
 
 # ==========================================
 # API: MASTER MESIN
