@@ -434,15 +434,26 @@
             headers: { 'Content-Type': 'application/json' }, 
             body: JSON.stringify(payload) 
         })
-        .then(res => res.json())
+        .then(async res => {
+            // Cek apakah server membalas dengan JSON atau halaman Error HTML
+            const isJson = res.headers.get('content-type')?.includes('application/json');
+            const data = isJson ? await res.json() : null;
+            if (!res.ok) {
+                // Jika server python error (misal database kepenuhan)
+                const errorText = data && data.message ? data.message : await res.text();
+                throw new Error("Server Database menolak data. (Batas karakter mungkin kurang besar).");
+            }
+            return data;
+        })
         .then(response => {
             muatDataLogAI(payload.id_mesin);
             document.getElementById('btnProsesAI').disabled = false;
             document.getElementById('btnProsesManual').disabled = false;
             document.getElementById('formAnalisisGabungan').reset();
-            alert("Hasil analisis berhasil disimpan!");
+            alert("Hasil analisis berhasil disimpan ke database!");
         })
         .catch(err => {
+            console.error("DB Error:", err);
             alert("Gagal menyimpan ke database! Error: " + err.message);
             document.getElementById('btnProsesAI').disabled = false;
             document.getElementById('btnProsesManual').disabled = false;
