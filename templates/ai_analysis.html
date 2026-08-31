@@ -52,7 +52,7 @@
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
                 <div>
                     <h2 class="m-0">Pusat Analisis AI & Riwayat Diagnosa Unit</h2>
-                    <small class="text-muted">Evaluasi berbasis TA Chart, Standar ISO 10816-3, & Silabus Mobius Institute (Powered by Gemini AI).</small>
+                    <small class="text-muted">Evaluasi berbasis TA Chart, Standar ISO 10816-3, & Silabus Mobius Institute (Dual Mode).</small>
                 </div>
                 <div class="d-flex align-items-center gap-2 bg-white border p-3 rounded shadow-sm" style="min-width: 450px;">
                     <label class="fw-bold m-0 text-nowrap"><i class="fa-solid fa-magnifying-glass text-primary"></i> Pilih Unit Global:</label>
@@ -67,7 +67,7 @@
                     <div class="card shadow-sm border-0 h-100">
                         <div class="card-header bg-white fw-bold p-3 border-bottom"><i class="fa-solid fa-cloud-arrow-up text-primary"></i> Parameter Aktual & Bukti Lapangan</div>
                         <div class="card-body">
-                            <form id="formAnalisisGabungan" onsubmit="analisisDenganGabunganAI(event)">
+                            <form id="formAnalisisGabungan">
                                 
                                 <div class="row mb-3">
                                     <div class="col-md-6">
@@ -88,9 +88,17 @@
                                     <label class="form-label fw-bold small text-info"><i class="fa-solid fa-image"></i> Link Screenshot / Gambar (Opsional):</label>
                                     <input type="url" class="form-control form-control-sm" id="fileScreenshot" placeholder="https://drive.google.com/...">
                                 </div>
-                                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" id="btnProsesAI">
-                                    <i class="fa-solid fa-wand-magic-sparkles"></i> Analisis dengan Gemini AI & Simpan
-                                </button>
+                                
+                                <!-- DUAL BUTTON MODE -->
+                                <div class="d-flex gap-2 mt-3">
+                                    <button type="button" class="btn btn-primary flex-grow-1 fw-bold" id="btnProsesAI" onclick="analisisDenganGemini()">
+                                        <i class="fa-solid fa-wand-magic-sparkles"></i> Analisis Gemini AI
+                                    </button>
+                                    <button type="button" class="btn btn-secondary fw-bold px-4" id="btnProsesManual" onclick="analisisDenganRule()" title="Gunakan jika AI sedang gangguan">
+                                        <i class="fa-solid fa-server"></i> Mode Manual
+                                    </button>
+                                </div>
+
                             </form>
                         </div>
                     </div>
@@ -104,7 +112,7 @@
                                 <span class="badge bg-secondary" id="badgeStatus">Siap Menganalisis</span>
                             </div>
                             <div id="kontenHasilAi">
-                                <p class="text-white-50">Silakan masukkan angka vibrasi aktual dan gejala FFT di samping. <b>Google Gemini AI</b> akan memvalidasi data menggunakan gabungan <b>TA Chart, ISO 10816-3, & Silabus Mobius Institute</b> secara otomatis dan cerdas.</p>
+                                <p class="text-white-50">Silakan masukkan angka vibrasi aktual dan gejala FFT di samping. Gunakan <b>Gemini AI</b> untuk analisis dinamis, atau klik <b>Mode Manual</b> jika koneksi ke Google API sedang sibuk/gangguan.</p>
                             </div>
                         </div>
                         <div class="mt-3 pt-2 border-top border-light border-opacity-25">
@@ -166,7 +174,7 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title"><i class="fa-solid fa-microscope text-info"></i> Laporan Detail Diagnosa AI</h5>
+                <h5 class="modal-title"><i class="fa-solid fa-microscope text-info"></i> Laporan Detail Diagnosa</h5>
                 <button type="button" class="btn-close btn-close-white" onclick="tutupModalCustom()"></button>
             </div>
             <div class="modal-body bg-white text-dark" id="modalBodyKonten"></div>
@@ -184,7 +192,7 @@
         <div class="modal-content">
             <form onsubmit="simpanEditLogAI(event)">
                 <div class="modal-header bg-warning text-dark fw-bold">
-                    <h5 class="modal-title"><i class="fa-solid fa-pen-to-square"></i> Edit Hasil Analisis AI</h5>
+                    <h5 class="modal-title"><i class="fa-solid fa-pen-to-square"></i> Edit Hasil Analisis</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -192,7 +200,6 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold text-secondary small">Ringkasan Indikasi (Diagnosis)</label>
                         <textarea class="form-control" id="editIndikasi" rows="3" required></textarea>
-                        <small class="text-muted mt-1 d-block"><i class="fa-solid fa-circle-info"></i> Teks ini akan terupdate otomatis di tabel utama sekaligus di dalam Pop-up Laporan Detail.</small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold text-secondary small">Rekomendasi (Korektif)</label>
@@ -207,7 +214,6 @@
         </div>
     </div>
 </div>
-
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
@@ -263,7 +269,7 @@
 
         document.getElementById('badgeStatus').className = "badge bg-secondary";
         document.getElementById('badgeStatus').innerText = "Siap Menganalisis";
-        document.getElementById('kontenHasilAi').innerHTML = `<p class="text-white-50">Silakan masukkan angka vibrasi aktual dan gejala FFT di samping. <b>Google Gemini AI</b> akan memvalidasi data menggunakan gabungan <b>TA Chart, ISO 10816-3, & Silabus Mobius Institute</b> secara otomatis dan cerdas.</p>`;
+        document.getElementById('kontenHasilAi').innerHTML = `<p class="text-white-50">Silakan masukkan angka vibrasi aktual dan gejala FFT di samping. Gunakan <b>Gemini AI</b> untuk analisis dinamis, atau klik <b>Mode Manual</b> jika koneksi ke Google API sedang sibuk/gangguan.</p>`;
     }
 
     function renderGrafikTrenDariDatabase(unitId, logs) {
@@ -343,48 +349,29 @@
         });
     }
 
+    // Modal Functions
     function bukaModalEditAI(id) {
         const item = dbLogsAI.find(x => x.id === id);
         if(!item) return;
-
         document.getElementById('editID').value = item.id;
         document.getElementById('editIndikasi').value = item.indikasi;
         document.getElementById('editRekomendasi').value = item.rekomendasi;
-        
         new bootstrap.Modal(document.getElementById('modalEditAI')).show();
     }
 
     function simpanEditLogAI(event) {
         event.preventDefault();
         const id = parseInt(document.getElementById('editID').value);
-        const newIndikasi = document.getElementById('editIndikasi').value;
-        const newRekomendasi = document.getElementById('editRekomendasi').value;
-
         const item = dbLogsAI.find(x => x.id === id);
-        
-        let borderColor = "border-warning";
-        let iconClass = "fa-circle-exclamation text-warning";
+        let borderColor = "border-warning"; let iconClass = "fa-circle-exclamation text-warning";
         
         if(item.status_iso.includes("Berbahaya") || item.status_iso.includes("Zone D")) {
-            borderColor = "border-danger";
-            iconClass = "fa-circle-xmark text-danger";
+            borderColor = "border-danger"; iconClass = "fa-circle-xmark text-danger";
         }
-
-        const newHTML = `
-            <h6 class="fw-bold text-dark mb-3"><i class="fa-solid ${iconClass}"></i> Diagnostik Terintegrasi: ${item.id_mesin}</h6>
-            <div class="bg-light p-3 rounded mb-3 border ${borderColor}">
-                <p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p>
-                <p class="small mb-0">${newIndikasi}</p>
-            </div>
-            <div class="bg-light p-3 rounded border ${borderColor}">
-                <p class="fw-bold mb-2">Rekomendasi (Korektif):</p>
-                <p class="small mb-0">${newRekomendasi}</p>
-            </div>
-        `;
-
-        const payload = { indikasi: newIndikasi, rekomendasi: newRekomendasi, diagnosis: newHTML };
-
-        fetch('/api/ai-analysis/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        
+        const newHTML = `<h6 class="fw-bold text-dark mb-3"><i class="fa-solid ${iconClass}"></i> Diagnostik Terintegrasi: ${item.id_mesin}</h6><div class="bg-light p-3 rounded mb-3 border ${borderColor}"><p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p><p class="small mb-0">${document.getElementById('editIndikasi').value}</p></div><div class="bg-light p-3 rounded border ${borderColor}"><p class="fw-bold mb-2">Rekomendasi (Korektif):</p><p class="small mb-0">${document.getElementById('editRekomendasi').value}</p></div>`;
+        
+        fetch('/api/ai-analysis/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ indikasi: document.getElementById('editIndikasi').value, rekomendasi: document.getElementById('editRekomendasi').value, diagnosis: newHTML }) })
         .then(res => res.json())
         .then(res => {
             alert(res.message);
@@ -405,104 +392,6 @@
         }
     }
 
-    // FUNGSI BARU: BERKOMUNIKASI DENGAN BACKEND (GEMINI AI API)
-    function analisisDenganGabunganAI(event) {
-        event.preventDefault();
-        const unitId = document.getElementById('pilihUnitAnalisis').value;
-        if(!unitId) return alert("Pilih unit mesin terlebih dahulu!");
-
-        const inputVib = parseFloat(document.getElementById('inputVibrasi').value);
-        const inputGejala = document.getElementById('inputGejala').value;
-        const linkPdf = document.getElementById('filePdf').value || "#";
-        const linkSs = document.getElementById('fileScreenshot').value || "#";
-
-        const btnProses = document.getElementById('btnProsesAI');
-        const badge = document.getElementById('badgeStatus');
-        const hasil = document.getElementById('kontenHasilAi');
-
-        btnProses.disabled = true;
-        badge.className = "badge bg-info text-dark"; badge.innerText = "Gemini AI Sedang Berpikir...";
-        hasil.innerHTML = `<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin fs-1 text-info"></i><p class="mt-2 text-white">Menghubungkan ke Otak Google Gemini API...</p></div>`;
-
-        // 1. Minta Analisis ke Backend (Gemini)
-        fetch('/api/generate-ai', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ vibrasi: inputVib, gejala: inputGejala })
-        })
-        .then(res => res.json())
-        .then(ai_response => {
-            if (ai_response.status !== 'success') {
-                alert("Gagal menghubungi AI: " + ai_response.message);
-                btnProses.disabled = false;
-                hasil.innerHTML = `<p class="text-danger">Koneksi AI Gagal atau Timeout.</p>`;
-                return;
-            }
-            
-            const tglHariIni = new Date().toISOString().split('T')[0];
-            const dataAI = ai_response.data; // Menerima JSON dari Gemini
-            
-            const p_status = dataAI.status_iso || "Zone A/B (Aman)";
-            const p_indikasi = dataAI.indikasi || "Gejala terbaca normal.";
-            const p_rek = dataAI.rekomendasi || "Lanjutkan pemantauan ruting.";
-
-            let borderColor = "border-success"; let iconClass = "fa-circle-check text-success";
-            if(p_status.includes("Waspada")) { borderColor = "border-warning"; iconClass = "fa-circle-exclamation text-warning"; }
-            if(p_status.includes("Berbahaya")) { borderColor = "border-danger"; iconClass = "fa-circle-xmark text-danger"; }
-
-            // Merakit output untuk layar hitam
-            const p_htmlDetail = `
-                <h6 class="fw-bold text-dark mb-3"><i class="fa-solid ${iconClass}"></i> Diagnostik AI Terintegrasi (Powered by Gemini): ${unitId}</h6>
-                <div class="bg-light p-3 rounded mb-3 border ${borderColor}">
-                    <p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p>
-                    <p class="small mb-0">${p_indikasi}</p>
-                </div>
-                <div class="bg-light p-3 rounded border ${borderColor}">
-                    <p class="fw-bold mb-2">Rekomendasi (Korektif):</p>
-                    <p class="small mb-0">${p_rek}</p>
-                </div>
-            `;
-            
-            let kotakStatusColor = p_status.includes("Berbahaya") ? "bg-danger" : (p_status.includes("Waspada") ? "bg-warning text-dark" : "bg-success");
-            badge.className = "badge " + kotakStatusColor; badge.innerText = p_status;
-            hasil.innerHTML = `<div class="text-white">${p_htmlDetail.replace(/bg-light/g, 'bg-dark bg-opacity-50 text-white').replace(/text-dark/g, 'text-white')}</div>`;
-
-            // 2. Simpan Hasil Analisis ke Database TiDB
-            let payload = {
-                id_mesin: unitId,
-                tgl_analisis: tglHariIni,
-                status_iso: p_status,
-                nilai_vibrasi: inputVib,
-                indikasi: p_indikasi,
-                diagnosis_lengkap: p_htmlDetail, 
-                rekomendasi: p_rek,
-                file_pdf: linkPdf,
-                file_gambar: linkSs
-            };
-
-            return fetch('/api/ai-analysis', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-        })
-        .then(res => {
-            if(!res) return;
-            return res.json();
-        })
-        .then(response => {
-            if(!response) return;
-            muatDataLogAI(unitId);
-            btnProses.disabled = false;
-            document.getElementById('formAnalisisGabungan').reset();
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Terjadi kesalahan saat memproses data AI!");
-            btnProses.disabled = false;
-        });
-    }
-
     function bukaModalDetail(tombol) {
         const tr = tombol.closest('tr');
         document.getElementById('modalBodyKonten').innerHTML = tr.querySelector('.konten-rahasia').innerHTML;
@@ -517,6 +406,174 @@
         if (typeof bootstrap !== 'undefined' && bootstrap.Modal) bootstrap.Modal.getInstance(mod)?.hide();
         mod.style.display = 'none'; mod.classList.remove('show');
     }
+
+    // ==========================================
+    // LOGIKA DUAL MODE (GEMINI AI & MANUAL)
+    // ==========================================
+    
+    function verifikasiForm() {
+        const unitId = document.getElementById('pilihUnitAnalisis').value;
+        const inputVib = document.getElementById('inputVibrasi').value;
+        const inputGejala = document.getElementById('inputGejala').value;
+        
+        if(!unitId) { alert("Pilih unit mesin terlebih dahulu!"); return false; }
+        if(!inputVib || !inputGejala) { alert("Vibrasi Overall dan Gejala wajib diisi!"); return false; }
+        
+        return {
+            unitId: unitId, 
+            inputVib: parseFloat(inputVib), 
+            inputGejala: inputGejala,
+            linkPdf: document.getElementById('filePdf').value || "#",
+            linkSs: document.getElementById('fileScreenshot').value || "#"
+        };
+    }
+
+    function eksekusiDatabase(payload) {
+        fetch('/api/ai-analysis', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(payload) 
+        })
+        .then(res => res.json())
+        .then(response => {
+            muatDataLogAI(payload.id_mesin);
+            document.getElementById('btnProsesAI').disabled = false;
+            document.getElementById('btnProsesManual').disabled = false;
+            document.getElementById('formAnalisisGabungan').reset();
+            alert("Hasil analisis berhasil disimpan!");
+        })
+        .catch(err => {
+            alert("Gagal menyimpan ke database! Error: " + err.message);
+            document.getElementById('btnProsesAI').disabled = false;
+            document.getElementById('btnProsesManual').disabled = false;
+        });
+    }
+
+    // MODE 1: GEMINI AI
+    function analisisDenganGemini() {
+        const dataForm = verifikasiForm();
+        if(!dataForm) return;
+
+        const btnProses = document.getElementById('btnProsesAI');
+        const badge = document.getElementById('badgeStatus');
+        const hasil = document.getElementById('kontenHasilAi');
+
+        btnProses.disabled = true; 
+        document.getElementById('btnProsesManual').disabled = true;
+        
+        badge.className = "badge bg-info text-dark"; 
+        badge.innerText = "Gemini AI Sedang Berpikir...";
+        hasil.innerHTML = `<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin fs-1 text-info"></i><p class="mt-2 text-white">Menghubungkan ke Otak Google Gemini API...</p></div>`;
+
+        fetch('/api/generate-ai', {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vibrasi: dataForm.inputVib, gejala: dataForm.inputGejala })
+        })
+        .then(res => res.json())
+        .then(ai_response => {
+            if (ai_response.status !== 'success') {
+                alert("Gagal menghubungi AI. Silakan gunakan Mode Manual. Pesan: " + ai_response.message);
+                btnProses.disabled = false; 
+                document.getElementById('btnProsesManual').disabled = false;
+                
+                badge.className = "badge bg-danger"; 
+                badge.innerText = "Koneksi Gagal";
+                hasil.innerHTML = `<p class="text-danger text-center mt-3"><i class="fa-solid fa-triangle-exclamation fs-1"></i><br>Koneksi AI Gagal atau Timeout.<br>Gunakan tombol <b>Mode Manual</b>.</p>`;
+                return;
+            }
+            
+            const dataAI = ai_response.data;
+            const p_status = dataAI.status_iso || "Zone A/B (Aman)";
+            const p_indikasi = dataAI.indikasi || "Gejala terbaca normal.";
+            const p_rek = dataAI.rekomendasi || "Lanjutkan pemantauan rutin.";
+
+            let borderColor = "border-success"; let iconClass = "fa-circle-check text-success";
+            if(p_status.includes("Waspada")) { borderColor = "border-warning"; iconClass = "fa-circle-exclamation text-warning"; }
+            if(p_status.includes("Berbahaya")) { borderColor = "border-danger"; iconClass = "fa-circle-xmark text-danger"; }
+
+            const p_htmlDetail = `<h6 class="fw-bold text-dark mb-3"><i class="fa-solid ${iconClass}"></i> Diagnostik AI Terintegrasi (Powered by Gemini): ${dataForm.unitId}</h6><div class="bg-light p-3 rounded mb-3 border ${borderColor}"><p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p><p class="small mb-0">${p_indikasi}</p></div><div class="bg-light p-3 rounded border ${borderColor}"><p class="fw-bold mb-2">Rekomendasi (Korektif):</p><p class="small mb-0">${p_rek}</p></div>`;
+            
+            let kotakStatusColor = p_status.includes("Berbahaya") ? "bg-danger" : (p_status.includes("Waspada") ? "bg-warning text-dark" : "bg-success");
+            badge.className = "badge " + kotakStatusColor; 
+            badge.innerText = p_status;
+            hasil.innerHTML = `<div class="text-white">${p_htmlDetail.replace(/bg-light/g, 'bg-dark bg-opacity-50 text-white').replace(/text-dark/g, 'text-white')}</div>`;
+
+            eksekusiDatabase({
+                id_mesin: dataForm.unitId, tgl_analisis: new Date().toISOString().split('T')[0], status_iso: p_status,
+                nilai_vibrasi: dataForm.inputVib, indikasi: p_indikasi, diagnosis_lengkap: p_htmlDetail, 
+                rekomendasi: p_rek, file_pdf: dataForm.linkPdf, file_gambar: dataForm.linkSs
+            });
+        })
+        .catch(err => {
+            alert("Kesalahan jaringan saat memproses API AI!");
+            btnProses.disabled = false; 
+            document.getElementById('btnProsesManual').disabled = false;
+        });
+    }
+
+    // MODE 2: MANUAL (SISTEM PAKAR)
+    function analisisDenganRule() {
+        const dataForm = verifikasiForm();
+        if(!dataForm) return;
+
+        const btnManual = document.getElementById('btnProsesManual');
+        const badge = document.getElementById('badgeStatus');
+        const hasil = document.getElementById('kontenHasilAi');
+
+        btnManual.disabled = true; 
+        document.getElementById('btnProsesAI').disabled = true;
+        
+        badge.className = "badge bg-info text-dark"; 
+        badge.innerText = "Sistem Menghitung Manual...";
+        hasil.innerHTML = `<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin fs-1 text-info"></i><p class="mt-2 text-white">Mengevaluasi Parameter ISO 10816-3...</p></div>`;
+
+        setTimeout(() => {
+            let p_status = "", p_indikasi = "", p_rek = "", borderColor = "", iconClass = "";
+            let gejalaText = dataForm.inputGejala.toLowerCase();
+            
+            if (dataForm.inputVib <= 2.8) {
+                p_status = "Zone A/B (Aman)"; borderColor = "border-success"; iconClass = "fa-circle-check text-success";
+            } else if (dataForm.inputVib <= 4.5) {
+                p_status = "Zone C (Waspada)"; borderColor = "border-warning"; iconClass = "fa-circle-exclamation text-warning";
+            } else {
+                p_status = "Zone D (Berbahaya)"; borderColor = "border-danger"; iconClass = "fa-circle-xmark text-danger";
+            }
+
+            if (dataForm.inputVib <= 2.8) {
+                p_indikasi = `Vibrasi (${dataForm.inputVib} mm/s) batas wajar. Terdapat indikasi: ${dataForm.inputGejala}.`;
+                p_rek = "Lanjutkan pemantauan rutin sesuai jadwal.";
+            } else {
+                if (gejalaText.includes("1x")) {
+                    p_indikasi = `Vibrasi ${dataForm.inputVib} mm/s. Puncak 1X RPM mengindikasikan Unbalance pada rotor.`;
+                    p_rek = "Lakukan pembersihan rotor dan jadwalkan Dynamic Balancing.";
+                } else if (gejalaText.includes("2x") || gejalaText.includes("misalignment")) {
+                    p_indikasi = `Vibrasi ${dataForm.inputVib} mm/s. Puncak 2X RPM mengindikasikan Misalignment atau masalah kopling.`;
+                    p_rek = "Lakukan Laser Alignment dan periksa karet kopling.";
+                } else if (gejalaText.includes("bearing") || gejalaText.includes("non-synchronous")) {
+                    p_indikasi = `Vibrasi ${dataForm.inputVib} mm/s. Spektrum mendeteksi keausan Rolling Element Bearing.`;
+                    p_rek = "Jadwalkan penggantian bearing segera.";
+                } else {
+                    p_indikasi = `Vibrasi ${dataForm.inputVib} mm/s tinggi. Kelainan spektrum: ${dataForm.inputGejala}.`;
+                    p_rek = "Segera jadwalkan inspeksi menyeluruh oleh tim teknis.";
+                }
+            }
+
+            const p_htmlDetail = `<h6 class="fw-bold text-dark mb-3"><i class="fa-solid ${iconClass}"></i> Diagnostik Sistem Manual: ${dataForm.unitId}</h6><div class="bg-light p-3 rounded mb-3 border ${borderColor}"><p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p><p class="small mb-0">${p_indikasi}</p></div><div class="bg-light p-3 rounded border ${borderColor}"><p class="fw-bold mb-2">Rekomendasi (Korektif):</p><p class="small mb-0">${p_rek}</p></div>`;
+            
+            let kotakStatusColor = p_status.includes("Berbahaya") ? "bg-danger" : (p_status.includes("Waspada") ? "bg-warning text-dark" : "bg-success");
+            badge.className = "badge " + kotakStatusColor; 
+            badge.innerText = p_status;
+            hasil.innerHTML = `<div class="text-white">${p_htmlDetail.replace(/bg-light/g, 'bg-dark bg-opacity-50 text-white').replace(/text-dark/g, 'text-white')}</div>`;
+
+            eksekusiDatabase({
+                id_mesin: dataForm.unitId, tgl_analisis: new Date().toISOString().split('T')[0], status_iso: p_status,
+                nilai_vibrasi: dataForm.inputVib, indikasi: p_indikasi, diagnosis_lengkap: p_htmlDetail, 
+                rekomendasi: p_rek, file_pdf: dataForm.linkPdf, file_gambar: dataForm.linkSs
+            });
+        }, 1000); // Simulasi waktu proses
+    }
+
 </script>
 </body>
 </html>
