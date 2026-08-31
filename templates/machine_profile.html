@@ -110,7 +110,7 @@
                             <div class="spec-row"><span class="spec-label">Tahun Instalasi</span><span class="spec-val" id="specTahun">-</span></div>
                             <div class="spec-row"><span class="spec-label">Daya Motor</span><span class="spec-val" id="specDaya">-</span></div>
                             <div class="spec-row"><span class="spec-label">Kecepatan (RPM)</span><span class="spec-val" id="specRPM">-</span></div>
-                            <div class="spec-row"><span class="spec-label">Tipe Pelumas</span><span class="spec-val text-primary" id="specLube">-</span></div>
+                            <div class="spec-row"><span class="spec-label">Kode Bearing</span><span class="spec-val text-primary" id="specBearing">-</span></div>
                             <div class="spec-row border-bottom-0"><span class="spec-label">Dokumen / Manual</span>
                                 <span class="spec-val">
                                     <a href="#" id="specDokumen" target="_blank" class="badge bg-primary text-decoration-none p-2"><i class="fa-solid fa-cloud-arrow-down"></i> Buka Link Dokumen</a>
@@ -211,8 +211,8 @@
                             <input type="text" class="form-control form-control-sm" id="inputEditDaya">
                         </div>
                         <div class="col-6 mb-2">
-                            <label class="form-label fw-bold small">Tipe Pelumas:</label>
-                            <input type="text" class="form-control form-control-sm" id="inputEditPelumas">
+                            <label class="form-label fw-bold small">Kode Bearing:</label>
+                            <input type="text" class="form-control form-control-sm" id="inputEditBearing">
                         </div>
                     </div>
                     <div class="mb-3">
@@ -355,7 +355,7 @@
         document.getElementById('specTahun').innerText = mesinObj.tahun_instalasi && mesinObj.tahun_instalasi !== '-' ? mesinObj.tahun_instalasi : 'Belum diatur';
         document.getElementById('specDaya').innerText = mesinObj.daya_motor && mesinObj.daya_motor !== '-' ? mesinObj.daya_motor : 'Belum diatur';
         document.getElementById('specRPM').innerText = mesinObj.rpm && mesinObj.rpm !== '-' ? mesinObj.rpm : 'Belum diatur';
-        document.getElementById('specLube').innerText = mesinObj.tipe_pelumas && mesinObj.tipe_pelumas !== '-' ? mesinObj.tipe_pelumas : 'Belum diatur';
+        document.getElementById('specBearing').innerText = mesinObj.kode_bearing && mesinObj.kode_bearing !== '-' ? mesinObj.kode_bearing : 'Belum diatur';
         
         let elDok = document.getElementById('specDokumen');
         if(mesinObj.link_dokumen && mesinObj.link_dokumen.includes("http")) {
@@ -597,7 +597,7 @@
         document.getElementById('inputEditTahun').value = mesinObj.tahun_instalasi === '-' ? '' : (mesinObj.tahun_instalasi || '');
         document.getElementById('inputEditDaya').value = mesinObj.daya_motor === '-' ? '' : (mesinObj.daya_motor || '');
         document.getElementById('inputEditRPM').value = mesinObj.rpm === '-' ? '' : (mesinObj.rpm || '');
-        document.getElementById('inputEditPelumas').value = mesinObj.tipe_pelumas === '-' ? '' : (mesinObj.tipe_pelumas || '');
+        document.getElementById('inputEditBearing').value = mesinObj.kode_bearing === '-' ? '' : (mesinObj.kode_bearing || '');
         document.getElementById('inputEditLink').value = (mesinObj.link_dokumen && mesinObj.link_dokumen !== '#') ? mesinObj.link_dokumen : '';
         
         new bootstrap.Modal(document.getElementById('modalEditSpec')).show();
@@ -612,7 +612,7 @@
             tahun_instalasi: document.getElementById('inputEditTahun').value || '-',
             daya_motor: document.getElementById('inputEditDaya').value || '-',
             rpm: document.getElementById('inputEditRPM').value || '-',
-            tipe_pelumas: document.getElementById('inputEditPelumas').value || '-',
+            kode_bearing: document.getElementById('inputEditBearing').value || '-',
             link_dokumen: document.getElementById('inputEditLink').value || '#'
         };
 

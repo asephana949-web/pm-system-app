@@ -192,11 +192,11 @@ def update_master_mesin(id_mesin):
     try:
         with conn.cursor() as cursor:
             sql = """UPDATE master_mesin 
-                     SET tipe_mesin=%s, tahun_instalasi=%s, daya_motor=%s, rpm=%s, tipe_pelumas=%s, link_dokumen=%s 
+                     SET tipe_mesin=%s, tahun_instalasi=%s, daya_motor=%s, rpm=%s, kode_bearing=%s, link_dokumen=%s 
                      WHERE id_mesin=%s"""
             cursor.execute(sql, (
                 data.get('tipe_mesin'), data.get('tahun_instalasi'), data.get('daya_motor'), 
-                data.get('rpm'), data.get('tipe_pelumas'), data.get('link_dokumen'), id_mesin
+                data.get('rpm'), data.get('kode_bearing'), data.get('link_dokumen'), id_mesin
             ))
             conn.commit()
             return jsonify({"status": "success", "message": "Spesifikasi Teknis berhasil diperbarui!"})
