@@ -1,6 +1,6 @@
 import os
 import time
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, make_response
 from flask_cors import CORS
 import pymysql
 import json
@@ -38,6 +38,20 @@ DB_CONFIG = {
 
 def get_db_connection():
     return pymysql.connect(**DB_CONFIG)
+
+# ==========================================
+# ANTI-CACHE HEADER KHUSUS VERCEL
+# ==========================================
+@app.after_request
+def add_header(response):
+    """
+    Memaksa browser dan Vercel Edge Cache untuk tidak menyimpan cache dari respon API.
+    Memastikan data yang ditampilkan selalu fresh dari database TiDB.
+    """
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "-1"
+    return response
 
 # ==========================================
 # ROUTE HALAMAN & LOGIN
@@ -110,7 +124,6 @@ def generate_ai_diagnosis():
     vib = data.get('vibrasi')
     gejala = data.get('gejala')
     
-    # Prompt khusus yang merubah Gemini menjadi Pakar Vibrasi
     prompt = f"""
     Anda adalah seorang insinyur Pakar Analisis Vibrasi Mesin Industri (berpedoman pada ISO 10816-3 & Mobius Institute).
     Sebuah mesin menunjukkan nilai vibrasi overall sebesar {vib} mm/s (berbasis Rigid Foundation).
@@ -129,8 +142,6 @@ def generate_ai_diagnosis():
     }}
     """
     
-    # Retry otomatis khusus untuk error 503 (model Gemini sedang sibuk/high demand).
-    # Percobaan ke-1: langsung. Percobaan ke-2: tunggu 2 detik. Percobaan ke-3: tunggu 4 detik.
     MAX_PERCOBAAN = 3
     error_terakhir = None
 
@@ -142,7 +153,6 @@ def generate_ai_diagnosis():
             )
             ai_teks = response.text.strip()
 
-            # Membersihkan format markdown jika AI membandel
             if ai_teks.startswith("```json"): ai_teks = ai_teks[7:-3].strip()
             elif ai_teks.startswith("```"): ai_teks = ai_teks[3:-3].strip()
 
@@ -152,17 +162,13 @@ def generate_ai_diagnosis():
         except Exception as e:
             error_terakhir = e
             pesan_error = str(e)
-
-            # Cek apakah ini error 503/UNAVAILABLE (server Gemini sedang sibuk) -> layak dicoba ulang.
-            # Kalau errornya jenis lain (misal API key salah, JSON tidak valid), langsung berhenti, tidak perlu retry.
             sedang_sibuk = ("503" in pesan_error) or ("UNAVAILABLE" in pesan_error) or ("overloaded" in pesan_error.lower())
 
             if sedang_sibuk and percobaan < MAX_PERCOBAAN:
-                jeda_detik = 2 * percobaan  # 2 detik, lalu 4 detik
+                jeda_detik = 2 * percobaan  
                 time.sleep(jeda_detik)
-                continue  # coba lagi dari awal loop
+                continue  
             else:
-                # Bukan error 503, atau sudah percobaan terakhir -> menyerah dan lapor ke frontend.
                 break
 
     pesan_gagal = "Model AI sedang mengalami permintaan tinggi (sibuk). Sudah dicoba ulang beberapa kali, silakan coba lagi dalam beberapa menit."
