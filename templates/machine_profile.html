@@ -16,9 +16,11 @@
         .sidebar { background-color: #2c3e50; color: white; min-height: 100vh; padding-top: 20px; }
         .sidebar a { color: #bdc3c7; text-decoration: none; padding: 10px 20px; display: block; }
         .sidebar a:hover, .sidebar a.aktif { background-color: #34495e; color: white; border-left: 4px solid #3498db; }
-        .kpi-card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #3498db; }
-        .kpi-title { font-size: 12px; color: #7f8c8d; text-transform: uppercase; font-weight: bold; }
+        .kpi-card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #3498db; position: relative;}
+        .kpi-title { font-size: 11px; color: #7f8c8d; text-transform: uppercase; font-weight: bold; padding-right: 15px;}
         .kpi-value { font-size: 22px; font-weight: bold; color: #2c3e50; margin-top: 5px; }
+        .info-icon { position: absolute; top: 15px; right: 10px; cursor: pointer; color: #3498db; font-size: 16px; transition: 0.2s;}
+        .info-icon:hover { color: #2c3e50; transform: scale(1.1);}
         .spec-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; }
         .spec-label { color: #7f8c8d; font-weight: 600; }
         .spec-val { color: #2c3e50; font-weight: bold; text-align: right; }
@@ -29,7 +31,6 @@
         .status-aman { background-color: #2ecc71; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;}
         .status-hati-hati { background-color: #f1c40f; color: black; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;}
         .status-berbahaya { background-color: #e74c3c; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;}
-        .teks-ringkas { max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: middle;}
     </style>
 </head>
 <body>
@@ -63,27 +64,58 @@
             </div>
 
             <div class="row mb-4">
-                <div class="col-md-3"><div class="kpi-card" id="cardStatusMesin" style="border-left-color: #2ecc71;"><div class="kpi-title">Status Operasional</div><div class="kpi-value" id="valStatus">Running (Normal)</div></div></div>
-                <div class="col-md-3"><div class="kpi-card" id="cardHealthMesin" style="border-left-color: #3498db;"><div class="kpi-title">Overall Health Index</div><div class="kpi-value text-primary" id="valHealth">100%</div></div></div>
-                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #9b59b6;"><div class="kpi-title">MTBF (Berdasarkan Rentang Tgl)</div><div class="kpi-value" id="valMTBF">Menghitung...</div></div></div>
-                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #e74c3c;"><div class="kpi-title">MTTR (Rata-rata Perbaikan)</div><div class="kpi-value" id="valMTTR">Menghitung...</div></div></div>
+                <div class="col-md-3">
+                    <div class="kpi-card" id="cardStatusMesin" style="border-left-color: #2ecc71;">
+                        <div class="kpi-title">Status Operasional</div>
+                        <div class="kpi-value" id="valStatus">Running (Normal)</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-card" id="cardHealthMesin" style="border-left-color: #3498db;">
+                        <i class="fa-solid fa-circle-info info-icon" data-bs-toggle="modal" data-bs-target="#modalHealth" title="Detail Health Index"></i>
+                        <div class="kpi-title">Overall Health Index</div>
+                        <div class="kpi-value text-primary" id="valHealth">100%</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-card" style="border-left-color: #9b59b6;">
+                        <i class="fa-solid fa-circle-info info-icon" data-bs-toggle="modal" data-bs-target="#modalMTBFProfile" title="Detail Hitungan MTBF"></i>
+                        <div class="kpi-title">MTBF (Berdasarkan Tgl)</div>
+                        <div class="kpi-value" id="valMTBF">Menghitung...</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-card" style="border-left-color: #e74c3c;">
+                        <i class="fa-solid fa-circle-info info-icon" data-bs-toggle="modal" data-bs-target="#modalMTTRProfile" title="Detail Hitungan MTTR"></i>
+                        <div class="kpi-title">MTTR (Rata-rata Perbaikan)</div>
+                        <div class="kpi-value" id="valMTTR">Menghitung...</div>
+                    </div>
+                </div>
             </div>
 
             <div class="row mb-4">
                 <div class="col-md-4">
                     <div class="card shadow-sm border-0 mb-3">
-                        <div class="card-header bg-dark text-white fw-bold p-3"><i class="fa-solid fa-clipboard-list"></i> Spesifikasi Teknis Mesin</div>
+                        <div class="card-header bg-dark text-white fw-bold p-3 d-flex justify-content-between align-items-center">
+                            <span><i class="fa-solid fa-clipboard-list"></i> Spesifikasi Teknis</span>
+                            <button class="btn btn-sm btn-outline-light py-0" onclick="bukaModalEditSpec()"><i class="fa-solid fa-edit"></i> Edit</button>
+                        </div>
                         <div class="card-body">
                             <div class="spec-row"><span class="spec-label">Nama Aset</span><span class="spec-val text-primary" id="specNama">-</span></div>
                             <div class="spec-row"><span class="spec-label">ID Tagging</span><span class="spec-val" id="specID">-</span></div>
                             <div class="spec-row"><span class="spec-label">Wilayah Seksi</span><span class="spec-val" id="specWilayah">-</span></div>
                             <div class="spec-row"><span class="spec-label">Lokasi / Area</span><span class="spec-val" id="specArea">-</span></div>
                             <div class="spec-row align-items-center"><span class="spec-label">Kritisitas (Kategori)</span><span class="spec-val"><span class="badge bg-secondary" id="specKategori">-</span></span></div>
-                            <div class="spec-row mt-3 border-top pt-2"><span class="spec-label">Tipe Mesin</span><span class="spec-val" id="specTipe">Centrifugal / Induction</span></div>
-                            <div class="spec-row"><span class="spec-label">Tahun Instalasi</span><span class="spec-val" id="specTahun">2018</span></div>
-                            <div class="spec-row"><span class="spec-label">Daya Motor</span><span class="spec-val" id="specDaya">90 kW</span></div>
-                            <div class="spec-row"><span class="spec-label">Kecepatan (RPM)</span><span class="spec-val" id="specRPM">1480 RPM</span></div>
-                            <div class="spec-row"><span class="spec-label">Tipe Pelumas</span><span class="spec-val text-primary" id="specLube">Mobil SHC 626</span></div>
+                            <div class="spec-row mt-3 border-top pt-2"><span class="spec-label">Tipe Mesin</span><span class="spec-val" id="specTipe">-</span></div>
+                            <div class="spec-row"><span class="spec-label">Tahun Instalasi</span><span class="spec-val" id="specTahun">-</span></div>
+                            <div class="spec-row"><span class="spec-label">Daya Motor</span><span class="spec-val" id="specDaya">-</span></div>
+                            <div class="spec-row"><span class="spec-label">Kecepatan (RPM)</span><span class="spec-val" id="specRPM">-</span></div>
+                            <div class="spec-row"><span class="spec-label">Kode Bearing</span><span class="spec-val text-primary" id="specBearing">-</span></div>
+                            <div class="spec-row border-bottom-0"><span class="spec-label">Dokumen / Manual</span>
+                                <span class="spec-val">
+                                    <a href="#" id="specDokumen" target="_blank" class="badge bg-primary text-decoration-none p-2"><i class="fa-solid fa-cloud-arrow-down"></i> Buka Link Dokumen</a>
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -144,6 +176,110 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Edit Spesifikasi Teknis -->
+<div class="modal fade" id="modalEditSpec" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-edit"></i> Edit Spesifikasi Teknis</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditSpec" onsubmit="simpanSpesifikasi(event)">
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small">ID Mesin (Terkunci):</label>
+                        <input type="text" class="form-control form-control-sm bg-light" id="inputEditID" readonly>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small">Tipe Mesin:</label>
+                        <input type="text" class="form-control form-control-sm" id="inputEditTipe" placeholder="Contoh: Centrifugal Pump">
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-2">
+                            <label class="form-label fw-bold small">Tahun Instalasi:</label>
+                            <input type="text" class="form-control form-control-sm" id="inputEditTahun">
+                        </div>
+                        <div class="col-6 mb-2">
+                            <label class="form-label fw-bold small">Kecepatan (RPM):</label>
+                            <input type="text" class="form-control form-control-sm" id="inputEditRPM">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-2">
+                            <label class="form-label fw-bold small">Daya Motor (kW):</label>
+                            <input type="text" class="form-control form-control-sm" id="inputEditDaya">
+                        </div>
+                        <div class="col-6 mb-2">
+                            <label class="form-label fw-bold small">Kode Bearing:</label>
+                            <input type="text" class="form-control form-control-sm" id="inputEditBearing">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Link Dokumen (Google Drive / SharePoint dll):</label>
+                        <input type="url" class="form-control form-control-sm" id="inputEditLink" placeholder="https://drive.google.com/...">
+                        <small class="text-muted" style="font-size: 11px;">*Upload file ke Drive/Cloud, lalu tempel link Share-nya di sini agar tidak membebani server.</small>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-sm fw-bold">Simpan Spesifikasi</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Penjelasan Popup (Dinamis dari JS) -->
+<div class="modal fade" id="modalMTBFProfile" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fa-solid fa-calculator"></i> Data MTBF Komponen</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Di Profil Mesin, MTBF dihitung spesifik untuk <strong>Keandalan Komponen Aset Ini</strong>, berdasarkan seluruh riwayat pekerjaan mekanik.</p>
+                <div class="bg-light p-2 border rounded mb-3 text-center" id="mtbfProfileTeks">Memuat data...</div>
+                <h6>Rincian Riwayat Pekerjaan (Durasi):</h6>
+                <table class="table table-sm table-bordered"><tbody id="tabelIntervensiMTBF"></tbody></table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalMTTRProfile" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fa-solid fa-wrench"></i> Data MTTR Komponen</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Mewakili rata-rata <strong>Durasi Waktu Kerja Perbaikan</strong> aktual saat tim memelihara mesin ini.</p>
+                <div class="bg-light p-2 border rounded mb-3 text-center" id="mttrProfileTeks">Memuat data...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalHealth" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fa-solid fa-heart-pulse"></i> Analisis Health Index AI</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Health Index (0-100%) ditarik secara dinamis dari log analisis prediksi (ISO 10816-3) terbaru untuk mesin ini.</p>
+                <div class="bg-light p-3 border rounded mb-3" id="healthDetailTeks">
+                    Memuat data AI...
+                </div>
+                <small class="text-muted">*Jika nilai di bawah 100%, sistem mendeteksi anomali pada vibrasi atau parameter lain yang memerlukan intervensi tim.</small>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
@@ -214,6 +350,22 @@
         document.getElementById('specKategori').className = "badge " + badgeKat;
         document.getElementById('specKategori').innerText = kat;
 
+        // Memuat Spesifikasi Dinamis yang Baru
+        document.getElementById('specTipe').innerText = mesinObj.tipe_mesin && mesinObj.tipe_mesin !== '-' ? mesinObj.tipe_mesin : 'Belum diatur';
+        document.getElementById('specTahun').innerText = mesinObj.tahun_instalasi && mesinObj.tahun_instalasi !== '-' ? mesinObj.tahun_instalasi : 'Belum diatur';
+        document.getElementById('specDaya').innerText = mesinObj.daya_motor && mesinObj.daya_motor !== '-' ? mesinObj.daya_motor : 'Belum diatur';
+        document.getElementById('specRPM').innerText = mesinObj.rpm && mesinObj.rpm !== '-' ? mesinObj.rpm : 'Belum diatur';
+        document.getElementById('specBearing').innerText = mesinObj.kode_bearing && mesinObj.kode_bearing !== '-' ? mesinObj.kode_bearing : 'Belum diatur';
+        
+        let elDok = document.getElementById('specDokumen');
+        if(mesinObj.link_dokumen && mesinObj.link_dokumen.includes("http")) {
+            elDok.href = mesinObj.link_dokumen;
+            elDok.style.display = "inline-block";
+        } else {
+            elDok.href = "#";
+            elDok.style.display = "none";
+        }
+
         fetch(`/api/ai-analysis?id_mesin=${idTerpilih}`)
             .then(res => res.json())
             .then(logs => {
@@ -221,24 +373,29 @@
             });
     }
 
-    // FUNGSI MTBF & MTTR DINAMIS BERDASARKAN FILTER TANGGAL
+    // FUNGSI MTBF & MTTR DINAMIS & MENGISI POPUP INFO
     function kalkulasiMTBFdanMTTR(idMesin, startDate, endDate) {
         if(!dbRiwayatGlobal.length) return;
         
         const riwayatMesin = dbRiwayatGlobal.filter(r => r.nama_alat === idMesin);
         
-        // Filter: Hanya perbaikan tipe 'Corrective' (Kerusakan), terlepas dari downtime atau tidak.
+        // Menghapus filter Corrective agar SELURUH riwayat masuk ke kalkulasi sesuai permintaan
         const dataKerusakan = riwayatMesin.filter(r => {
             const tgl = new Date(r.tgl_eksekusi);
-            return r.tipe_pekerjaan === 'Corrective' && tgl >= startDate && tgl <= endDate;
+            return tgl >= startDate && tgl <= endDate;
         });
 
         let jumlahKerusakan = dataKerusakan.length;
         let totalPerbaikanJam = 0;
+        let htmlIntervensi = "";
 
         dataKerusakan.forEach(r => {
-            totalPerbaikanJam += (parseFloat(r.durasi_jam) || 0);
+            let durasi = parseFloat(r.durasi_jam) || 0;
+            totalPerbaikanJam += durasi;
+            htmlIntervensi += `<tr><td>${parseTanggalAman(r.tgl_eksekusi)}<br><small class="text-muted">${r.uraian_pekerjaan}</small></td><td class="text-danger fw-bold text-center">${durasi} Jam</td></tr>`;
         });
+
+        if(htmlIntervensi === "") htmlIntervensi = `<tr><td colspan="2" class="text-center text-muted">Aman! Tidak ada riwayat perbaikan di tanggal ini.</td></tr>`;
 
         // Hitung total jam operasional dari rentang tanggal
         let diffTime = Math.abs(endDate - startDate);
@@ -257,26 +414,38 @@
             divMTTR.innerText = mttr.toFixed(1) + " Jam";
             divMTBF.innerText = Math.round(mtbf).toLocaleString() + " Jam";
             
-            // Standar Warna MTTR
             divMTTR.className = mttr < 4 ? "kpi-value text-success" : (mttr <= 8 ? "kpi-value text-warning" : "kpi-value text-danger");
-            // Standar Warna MTBF
             divMTBF.className = mtbf > 720 ? "kpi-value text-success" : (mtbf >= 168 ? "kpi-value text-warning" : "kpi-value text-danger");
+            
+            // Isi text popup
+            document.getElementById('mtbfProfileTeks').innerHTML = `(${totalJamRange} Jam Total - ${totalPerbaikanJam} Jam Durasi) / ${jumlahKerusakan} Kejadian = <strong>${mtbf.toFixed(1)} Jam</strong>`;
+            document.getElementById('mttrProfileTeks').innerHTML = `${totalPerbaikanJam} Jam Durasi / ${jumlahKerusakan} Kejadian = <strong>${mttr.toFixed(1)} Jam</strong>`;
+            
         } else {
             divMTTR.innerText = "0 Jam";
             divMTBF.innerText = "> " + totalJamRange.toLocaleString() + " Jam";
             divMTTR.className = "kpi-value text-success";
             divMTBF.className = "kpi-value text-success";
+            
+            document.getElementById('mtbfProfileTeks').innerHTML = `Karena tidak ada kejadian kerusakan, MTBF dinilai maksimal <strong>(> ${totalJamRange} Jam)</strong>`;
+            document.getElementById('mttrProfileTeks').innerHTML = `Tidak ada data waktu perbaikan (MTTR = 0).`;
         }
+        
+        document.getElementById('tabelIntervensiMTBF').innerHTML = htmlIntervensi;
     }
 
     function kalkulasiKesehatanDatabase(logs) {
         dataKesehatanGlobal = [];
         let valHealthSekarang = 100;
         let statusText = "Running (Normal)"; let statusColor = "#2ecc71"; 
+        
+        // Logic Baru: Injeksi Data ke Popup Health Index
+        let healthPopupContent = "";
 
         if (logs.length === 0) {
             let today = new Date().toISOString().split('T')[0];
             dataKesehatanGlobal.push({ tgl: today, val: 100, iso: "Belum Ada Analisis", indikasi: "Kondisi Default (Aman)", rekomendasi: "-" });
+            healthPopupContent = `<div class="text-center text-success fw-bold"><i class="fa-solid fa-shield-halved fs-1 mb-2"></i><br>Aset belum memiliki riwayat analisis AI. Status dianggap 100% Aman.</div>`;
         } else {
             logs.forEach(item => {
                 let currentHealth = 100; 
@@ -293,7 +462,33 @@
                 });
             });
             valHealthSekarang = dataKesehatanGlobal[dataKesehatanGlobal.length - 1].val;
+            
+            // Siapkan data untuk Popup Health Index berdasarkan log terbaru
+            let lastLog = logs[logs.length - 1];
+            let textColor = valHealthSekarang < 60 ? "text-danger" : (valHealthSekarang < 85 ? "text-warning" : "text-success");
+            healthPopupContent = `
+                <h6 class="border-bottom pb-2">Hasil Prediksi AI Terakhir: <strong>${parseTanggalAman(lastLog.tgl_analisis)}</strong></h6>
+                <div class="row mt-2">
+                    <div class="col-5 text-muted fw-bold">Status ISO:</div>
+                    <div class="col-7 fw-bold ${textColor}">${lastLog.status_iso}</div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-5 text-muted fw-bold">Nilai Vibrasi:</div>
+                    <div class="col-7 fw-bold">${lastLog.nilai_vibrasi} mm/s</div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-5 text-muted fw-bold">Indikasi/Gejala:</div>
+                    <div class="col-7">${lastLog.indikasi}</div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-5 text-muted fw-bold">Rekomendasi:</div>
+                    <div class="col-7 text-primary">${lastLog.rekomendasi}</div>
+                </div>
+            `;
         }
+        
+        // Memasukkan konten ke dalam modal Health Index
+        document.getElementById('healthDetailTeks').innerHTML = healthPopupContent;
 
         document.getElementById('valHealth').innerText = valHealthSekarang + "%";
         if (valHealthSekarang < 60) { statusText = "Danger (Kritis)"; statusColor = "#e74c3c"; document.getElementById('valHealth').className = "kpi-value text-danger"; }
@@ -306,7 +501,6 @@
         
         renderTabelStatusKondisi();
         
-        // Panggil filter 1 tahun secara default
         try { filterCepat('12bulan'); } catch (error) { console.error(error); }
     }
 
@@ -331,7 +525,6 @@
         });
     }
 
-    // UPDATE: Memanggil kalkulasi MTBF di dalam filter cepat
     function filterCepat(mode) {
         if (dataKesehatanGlobal.length === 0) return;
         
@@ -347,7 +540,6 @@
         document.getElementById('tglMulai').value = startD.toISOString().split('T')[0];
         document.getElementById('tglAkhir').value = endD.toISOString().split('T')[0];
         
-        // Panggil MTBF Calculator
         kalkulasiMTBFdanMTTR(mesinAktifSaatIni, startD, endD);
 
         const dataTersaring = dataKesehatanGlobal.filter(item => { 
@@ -362,13 +554,11 @@
         renderGrafikAkurat(dataTersaring, false);
     }
 
-    // UPDATE: Memanggil kalkulasi MTBF di dalam filter custom tanggal
     function filterGrafikTanggal() {
         if (dataKesehatanGlobal.length === 0) return;
         const tglMulai = new Date(document.getElementById('tglMulai').value);
         const tglAkhir = new Date(document.getElementById('tglAkhir').value);
         
-        // Panggil MTBF Calculator
         kalkulasiMTBFdanMTTR(mesinAktifSaatIni, tglMulai, tglAkhir);
 
         const dataTersaring = dataKesehatanGlobal.filter(item => { 
@@ -394,6 +584,54 @@
             type: 'line',
             data: { labels: labelTanggal, datasets: [{ label: 'Health Index (%)', data: dataAngka, borderColor: '#2ecc71', backgroundColor: gradient, borderWidth: 3, pointBackgroundColor: '#27ae60', pointBorderColor: '#fff', pointRadius: 6, pointHoverRadius: 9, fill: true, tension: 0.1 }] },
             options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { display: false } } }
+        });
+    }
+
+    // FUNGSI BARU: BUKA MODAL EDIT SPESIFIKASI
+    function bukaModalEditSpec() {
+        if(!mesinAktifSaatIni) return alert("Pilih unit mesin terlebih dahulu!");
+        const mesinObj = dbMasterProfil.find(m => m.id_mesin === mesinAktifSaatIni);
+        
+        document.getElementById('inputEditID').value = mesinObj.id_mesin;
+        document.getElementById('inputEditTipe').value = mesinObj.tipe_mesin === '-' ? '' : (mesinObj.tipe_mesin || '');
+        document.getElementById('inputEditTahun').value = mesinObj.tahun_instalasi === '-' ? '' : (mesinObj.tahun_instalasi || '');
+        document.getElementById('inputEditDaya').value = mesinObj.daya_motor === '-' ? '' : (mesinObj.daya_motor || '');
+        document.getElementById('inputEditRPM').value = mesinObj.rpm === '-' ? '' : (mesinObj.rpm || '');
+        document.getElementById('inputEditBearing').value = mesinObj.kode_bearing === '-' ? '' : (mesinObj.kode_bearing || '');
+        document.getElementById('inputEditLink').value = (mesinObj.link_dokumen && mesinObj.link_dokumen !== '#') ? mesinObj.link_dokumen : '';
+        
+        new bootstrap.Modal(document.getElementById('modalEditSpec')).show();
+    }
+
+    // FUNGSI BARU: SIMPAN SPESIFIKASI KE DATABASE
+    function simpanSpesifikasi(event) {
+        event.preventDefault();
+        const id = document.getElementById('inputEditID').value;
+        const dataInput = {
+            tipe_mesin: document.getElementById('inputEditTipe').value || '-',
+            tahun_instalasi: document.getElementById('inputEditTahun').value || '-',
+            daya_motor: document.getElementById('inputEditDaya').value || '-',
+            rpm: document.getElementById('inputEditRPM').value || '-',
+            kode_bearing: document.getElementById('inputEditBearing').value || '-',
+            link_dokumen: document.getElementById('inputEditLink').value || '#'
+        };
+
+        fetch('/api/master-mesin/' + id, { 
+            method: 'PUT', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(dataInput) 
+        })
+        .then(res => res.json())
+        .then(res => {
+            alert(res.message);
+            if(res.status === 'success') {
+                bootstrap.Modal.getInstance(document.getElementById('modalEditSpec')).hide();
+                // Refresh data background
+                fetch('/api/master-mesin').then(r => r.json()).then(data => {
+                    dbMasterProfil = data;
+                    muatDataMesin(); // Render ulang text di layar
+                });
+            }
         });
     }
 </script>

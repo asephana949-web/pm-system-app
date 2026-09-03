@@ -1,17 +1,34 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+import os
+import time
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, make_response
 from flask_cors import CORS
 import pymysql
+import json
+from google import genai
 
 app = Flask(__name__)
-app.secret_key = 'kunci_rahasia_sangat_aman'
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'kunci_rahasia_sangat_aman')
 CORS(app)
 
+# ==========================================
+# KONFIGURASI GEMINI AI (SDK BARU: google-genai)
+# ==========================================
+# Key dibaca dari Environment Variable GEMINI_API_KEY di Vercel.
+# Jangan pernah menuliskan key asli langsung di file ini!
+client_ai = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+# Alias resmi Google yang otomatis mengikuti model Flash stabil terbaru,
+# supaya kode ini tidak perlu diubah lagi setiap Google memensiunkan versi model.
+MODEL_AI = "gemini-flash-latest"
+
+# ==========================================
+# KONFIGURASI DATABASE (dibaca dari Environment Variable di Vercel)
+# ==========================================
 DB_CONFIG = {
-    'host': 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
-    'port': 4000,
-    'user': '4VXEw9XhvX4uvwp.root',
-    'password': 'hSNLRRYkNh6WdA3m',
-    'database': 'db_pm_system',
+    'host': os.environ.get('DB_HOST'),
+    'port': int(os.environ.get('DB_PORT', 4000)),
+    'user': os.environ.get('DB_USER'),
+    'password': os.environ.get('DB_PASSWORD'),
+    'database': os.environ.get('DB_NAME'),
     'ssl': {
         'ssl_verify_cert': True,
         'ssl_verify_identity': True
@@ -21,6 +38,20 @@ DB_CONFIG = {
 
 def get_db_connection():
     return pymysql.connect(**DB_CONFIG)
+
+# ==========================================
+# ANTI-CACHE HEADER KHUSUS VERCEL
+# ==========================================
+@app.after_request
+def add_header(response):
+    """
+    Memaksa browser dan Vercel Edge Cache untuk tidak menyimpan cache dari respon API.
+    Memastikan data yang ditampilkan selalu fresh dari database TiDB.
+    """
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "-1"
+    return response
 
 # ==========================================
 # ROUTE HALAMAN & LOGIN
@@ -84,6 +115,69 @@ def ai_analysis():
     return render_template('ai_analysis.html')
 
 # ==========================================
+# API BARU: GENERATE GEMINI AI (ANALISIS)
+# ==========================================
+@app.route('/api/generate-ai', methods=['POST'])
+def generate_ai_diagnosis():
+    if 'loggedin' not in session: return jsonify({"error": "Belum login"}), 403
+    data = request.json
+    vib = data.get('vibrasi')
+    gejala = data.get('gejala')
+    
+    prompt = f"""
+    Anda adalah seorang insinyur Pakar Analisis Vibrasi Mesin Industri (berpedoman pada ISO 10816-3 & Mobius Institute).
+    Sebuah mesin menunjukkan nilai vibrasi overall sebesar {vib} mm/s (berbasis Rigid Foundation).
+    Gejala spektrum (FFT) dominan yang diamati oleh teknisi di lapangan adalah: "{gejala}".
+
+    Tugas Anda:
+    1. Tentukan Status ISO 10816-3 (Pilih salah satu persis seperti ini: "Zone A/B (Aman)", "Zone C (Waspada)", atau "Zone D (Berbahaya)").
+    2. Berikan "Indikasi" masalah (maksimal 2 kalimat) berdasarkan perpaduan nilai vibrasi dan gejala FFT tersebut.
+    3. Berikan "Rekomendasi" teknis (maksimal 2 kalimat) mengenai tindakan maintenance korektif apa yang harus segera dilakukan mekanik.
+
+    PENTING: Output Anda HARUS murni berbentuk JSON format seperti di bawah ini, tanpa teks pengantar, dan tanpa penanda markdown (```json).
+    {{
+        "status_iso": "Zone C (Waspada)",
+        "indikasi": "Terdapat unbalance ...",
+        "rekomendasi": "Lakukan pembersihan ..."
+    }}
+    """
+    
+    MAX_PERCOBAAN = 3
+    error_terakhir = None
+
+    for percobaan in range(1, MAX_PERCOBAAN + 1):
+        try:
+            response = client_ai.models.generate_content(
+                model=MODEL_AI,
+                contents=prompt
+            )
+            ai_teks = response.text.strip()
+
+            if ai_teks.startswith("```json"): ai_teks = ai_teks[7:-3].strip()
+            elif ai_teks.startswith("```"): ai_teks = ai_teks[3:-3].strip()
+
+            hasil_json = json.loads(ai_teks)
+            return jsonify({"status": "success", "data": hasil_json})
+
+        except Exception as e:
+            error_terakhir = e
+            pesan_error = str(e)
+            sedang_sibuk = ("503" in pesan_error) or ("UNAVAILABLE" in pesan_error) or ("overloaded" in pesan_error.lower())
+
+            if sedang_sibuk and percobaan < MAX_PERCOBAAN:
+                jeda_detik = 2 * percobaan  
+                time.sleep(jeda_detik)
+                continue  
+            else:
+                break
+
+    pesan_gagal = "Model AI sedang mengalami permintaan tinggi (sibuk). Sudah dicoba ulang beberapa kali, silakan coba lagi dalam beberapa menit."
+    if error_terakhir and not (("503" in str(error_terakhir)) or ("UNAVAILABLE" in str(error_terakhir))):
+        pesan_gagal = str(error_terakhir)
+
+    return jsonify({"status": "error", "message": pesan_gagal}), 500
+
+# ==========================================
 # API: MASTER MESIN
 # ==========================================
 @app.route('/api/master-mesin', methods=['GET'])
@@ -93,6 +187,25 @@ def get_master_mesin():
         with conn.cursor() as cursor:
             cursor.execute("SELECT * FROM master_mesin ORDER BY area, id_mesin")
             return jsonify(cursor.fetchall())
+    finally:
+        conn.close()
+
+@app.route('/api/master-mesin/<id_mesin>', methods=['PUT'])
+def update_master_mesin(id_mesin):
+    if session.get('role') != 'Admin': return jsonify({"status": "error", "message": "Akses Ditolak!"}), 403
+    data = request.json
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = """UPDATE master_mesin 
+                     SET tipe_mesin=%s, tahun_instalasi=%s, daya_motor=%s, rpm=%s, kode_bearing=%s, link_dokumen=%s 
+                     WHERE id_mesin=%s"""
+            cursor.execute(sql, (
+                data.get('tipe_mesin'), data.get('tahun_instalasi'), data.get('daya_motor'), 
+                data.get('rpm'), data.get('kode_bearing'), data.get('link_dokumen'), id_mesin
+            ))
+            conn.commit()
+            return jsonify({"status": "success", "message": "Spesifikasi Teknis berhasil diperbarui!"})
     finally:
         conn.close()
 
@@ -131,7 +244,6 @@ def selesaikan_jadwal(id):
 
             cursor.execute("UPDATE jadwal_pm SET status='Completed' WHERE id=%s", (id,))
             
-            # TAMBAHAN BARU: Menangkap is_downtime dan downtime_jam
             is_dt = data.get('is_downtime', 'Tidak')
             dt_jam = data.get('downtime_jam', 0)
             if not dt_jam or str(dt_jam).strip() == '': dt_jam = 0
@@ -214,7 +326,7 @@ def manage_riwayat_id(id):
         conn.close()
 
 # ==========================================
-# API BARU: LOG AI ANALYSIS
+# API: LOG AI ANALYSIS
 # ==========================================
 @app.route('/api/ai-analysis', methods=['GET', 'POST'])
 def handle_ai_analysis():
@@ -222,7 +334,6 @@ def handle_ai_analysis():
     try:
         with conn.cursor() as cursor:
             if request.method == 'GET':
-                # Jika diminta ID tertentu, kirimkan khusus ID itu. Jika tidak, kirim semua.
                 id_mesin = request.args.get('id_mesin')
                 if id_mesin:
                     cursor.execute("SELECT * FROM log_ai_analysis WHERE id_mesin = %s ORDER BY tgl_analisis ASC", (id_mesin,))
@@ -244,7 +355,7 @@ def handle_ai_analysis():
                 return jsonify({"status": "success", "message": "Log Analisis AI berhasil disimpan secara permanen!"})
     finally:
         conn.close()
-        
+
 @app.route('/api/ai-analysis/<int:id>', methods=['PUT', 'DELETE'])
 def manage_ai_analysis_id(id):
     if session.get('role') != 'Admin': return jsonify({"status": "error", "message": "Akses Ditolak!"}), 403
@@ -267,5 +378,5 @@ def manage_ai_analysis_id(id):
         conn.close()
 
 if __name__ == '__main__':
-    print("🚀 Server Backend PM System Berjalan di: http://127.0.0.1:5000")
+    print("🚀 Server Backend PM System Berjalan di: [http://127.0.0.1:5000](http://127.0.0.1:5000)")
     app.run(debug=True, port=5000)
