@@ -252,8 +252,8 @@ def selesaikan_jadwal(id):
             dt_jam = data.get('downtime_jam', 0)
             if not dt_jam or str(dt_jam).strip() == '': dt_jam = 0
             
-            # Mengambil tipe_pekerjaan asli dari jadwal_pm (tidak di-hardcode lagi)
-            tipe_pekerjaan_history = jadwal.get('tipe_pekerjaan') if jadwal.get('tipe_pekerjaan') else 'Preventive'
+            # Tipe pekerjaan dipilih user langsung di pop-up "Selesaikan Pekerjaan"
+            tipe_pekerjaan_history = data.get('tipe_pekerjaan') if data.get('tipe_pekerjaan') else 'Preventive'
             
             sql_history = """INSERT INTO riwayat_perbaikan (tgl_eksekusi, nama_alat, tipe_pekerjaan, penyebab_kerusakan, uraian_pekerjaan, sparepart_terpakai, durasi_jam, dibuat_oleh, is_downtime, downtime_jam) 
                              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
