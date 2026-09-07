@@ -109,6 +109,7 @@
                                     <th>ID Mesin</th>
                                     <th>Nama Mesin</th> 
                                     <th>Area</th>
+                                    <th>Tipe Pekerjaan</th> <!-- TAMBAHAN KOLOM -->
                                     <th>Jenis Pekerjaan PM</th>
                                     <th>Tgl Rencana</th>
                                     <th>Periode</th>
@@ -151,8 +152,18 @@
                             <option value="">Memuat data mesin...</option>
                         </select>
                     </div>
+                    <!-- TAMBAHAN KOLOM INPUT TIPE -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">Jenis Pekerjaan PM:</label>
+                        <label class="form-label fw-bold small text-primary">Tipe Pekerjaan:</label>
+                        <select class="form-select form-select-sm" id="tambahTipePekerjaan" required>
+                            <option value="Preventive">Preventive</option>
+                            <option value="Corrective">Corrective</option>
+                            <option value="Overhaul">Overhaul</option>
+                            <option value="Predictive">Predictive</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Jenis Pekerjaan (Deskripsi Singkat):</label>
                         <textarea class="form-control form-control-sm" id="tambahPekerjaan" rows="2" required></textarea>
                     </div>
                     <div class="row">
@@ -202,8 +213,18 @@
                         <label class="form-label fw-bold small text-primary"><i class="fa-solid fa-search"></i> Unit Mesin / Alat (Ketik untuk mencari):</label>
                         <select class="form-select form-select-sm" id="editUnit" style="width: 100%;" required></select>
                     </div>
+                    <!-- TAMBAHAN KOLOM EDIT TIPE -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">Jenis Pekerjaan PM:</label>
+                        <label class="form-label fw-bold small text-primary">Tipe Pekerjaan:</label>
+                        <select class="form-select form-select-sm" id="editTipePekerjaan" required>
+                            <option value="Preventive">Preventive</option>
+                            <option value="Corrective">Corrective</option>
+                            <option value="Overhaul">Overhaul</option>
+                            <option value="Predictive">Predictive</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Jenis Pekerjaan (Deskripsi Singkat):</label>
                         <textarea class="form-control form-control-sm" id="editPekerjaan" rows="2" required></textarea>
                     </div>
                     <div class="row">
@@ -256,6 +277,11 @@
                             <label class="form-label fw-bold small">Tgl Eksekusi Aktual:</label>
                             <input type="date" class="form-control form-control-sm" id="selesaiTglEksekusi" required>
                         </div>
+                    </div>
+                    <!-- TAMBAHAN KOLOM TIPE DI MODAL SELESAI (Hanya Informasi) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Tipe Pekerjaan:</label>
+                        <input type="text" class="form-control form-control-sm bg-light fw-bold text-primary" id="selesaiTipePekerjaan" readonly>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Kondisi Alat (Penyebab):</label>
@@ -352,7 +378,7 @@
                 hariIni.setHours(0, 0, 0, 0);
 
                 if (data.length === 0) {
-                    html = `<tr><td colspan="10" class="text-center text-muted">Belum ada data jadwal PM</td></tr>`;
+                    html = `<tr><td colspan="11" class="text-center text-muted">Belum ada data jadwal PM</td></tr>`;
                 } else {
                     data.forEach(item => {
                         let tglRencana = '-';
@@ -372,6 +398,10 @@
                         if(item.status === 'Completed') badgeColor = "bg-success";
                         if(item.status === 'Overdue') badgeColor = "bg-danger";
                         if(item.status === 'Scheduled') badgeColor = "bg-primary";
+                        
+                        let badgeTipeColor = "bg-info text-dark";
+                        if(item.tipe_pekerjaan === 'Corrective') badgeTipeColor = "bg-danger";
+                        if(item.tipe_pekerjaan === 'Overhaul') badgeTipeColor = "bg-dark";
 
                         let actionButtons = '';
                         if (item.status !== 'Completed') {
@@ -394,6 +424,8 @@
                                 <td class="text-primary fw-bold text-nowrap">${item.id_mesin || '-'}</td>
                                 <td class="fw-bold">${namaTampil}</td> 
                                 <td><span class="badge bg-secondary">${item.area || '-'}</span></td>
+                                <!-- RENDER KOLOM TIPE PEKERJAAN -->
+                                <td><span class="badge ${badgeTipeColor}">${item.tipe_pekerjaan || 'Preventive'}</span></td>
                                 <td>${item.jenis_pekerjaan || '-'}</td>
                                 <td class="text-nowrap">${tglRencana}</td>
                                 <td>${item.periode || '-'}</td>
@@ -468,6 +500,10 @@
         document.getElementById('selesaiIdJadwal').value = item.id;
         document.getElementById('selesaiUnit').value = item.id_mesin;
         document.getElementById('selesaiTglEksekusi').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        
+        // Tampilkan Tipe Pekerjaan yang asli dari Database ke form Selesai
+        document.getElementById('selesaiTipePekerjaan').value = item.tipe_pekerjaan || 'Preventive';
+        
         document.getElementById('selesaiPenyebab').value = "Kondisi normal, pengecekan rutin berkala."; 
         document.getElementById('selesaiUraian').value = item.jenis_pekerjaan; 
         document.getElementById('selesaiSparepart').value = "-";
@@ -508,6 +544,10 @@
         document.getElementById('editNoTask').value = item.no_task;
         document.getElementById('editArea').value = item.area;
         $('#editUnit').val(item.id_mesin).trigger('change');
+        
+        // Ambil Data Tipe
+        document.getElementById('editTipePekerjaan').value = item.tipe_pekerjaan || 'Preventive';
+        
         document.getElementById('editPekerjaan').value = item.jenis_pekerjaan;
         
         let tglHanyaTanggal = '';
@@ -527,6 +567,7 @@
             no_task: document.getElementById('editNoTask').value,
             id_mesin: $('#editUnit').val(),
             area: document.getElementById('editArea').value,
+            tipe_pekerjaan: document.getElementById('editTipePekerjaan').value, // KIRIM TIPE
             jenis_pekerjaan: document.getElementById('editPekerjaan').value,
             tgl_rencana: document.getElementById('editTglRencana').value,
             periode: document.getElementById('editPeriode').value,
@@ -542,6 +583,7 @@
             no_task: document.getElementById('tambahNoTask').value,
             id_mesin: $('#tambahUnit').val(),
             area: document.getElementById('tambahArea').value,
+            tipe_pekerjaan: document.getElementById('tambahTipePekerjaan').value, // KIRIM TIPE
             jenis_pekerjaan: document.getElementById('tambahPekerjaan').value,
             tgl_rencana: document.getElementById('tambahTglRencana').value,
             periode: document.getElementById('tambahPeriode').value,
@@ -579,12 +621,10 @@
         b.className = total === 0 ? "fw-bold mt-1 mb-0 text-muted" : (rate < 80 ? "fw-bold mt-1 mb-0 text-danger" : (rate < 95 ? "fw-bold mt-1 mb-0 text-warning" : "fw-bold mt-1 mb-0 text-success"));
     }
     
-    // TAMBAHAN: FUNGSI EXPORT EXCEL
     function exportToExcel() {
         let tabelAsli = document.getElementById("tabelJadwalAsli");
         let tabelClone = tabelAsli.cloneNode(true);
         
-        // Menghapus kolom 'Aksi' agar tombol-tombol tidak ikut ter-export
         let rows = tabelClone.querySelectorAll("tr");
         rows.forEach(row => {
             let cells = row.querySelectorAll("th, td");
@@ -593,7 +633,6 @@
             }
         });
         
-        // Membersihkan row yang terkena filter (display: none)
         let tbody = tabelClone.querySelector("tbody");
         let validRows = Array.from(tbody.querySelectorAll("tr")).filter(tr => tr.style.display !== 'none');
         tbody.innerHTML = "";
