@@ -13,14 +13,7 @@
         .sidebar { background-color: #2c3e50; color: white; min-height: 100vh; padding-top: 20px; }
         .sidebar a { color: #bdc3c7; text-decoration: none; padding: 10px 20px; display: block; }
         .sidebar a:hover, .sidebar a.aktif { background-color: #34495e; color: white; border-left: 4px solid #3498db; }
-        
-        /* Modifikasi Card KPI untuk icon Detail */
-        .kpi-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #3498db; position: relative; }
-        .info-icon { position: absolute; top: 15px; right: 15px; cursor: pointer; color: #7f8c8d; font-size: 16px; transition: 0.2s; }
-        .info-icon:hover { color: #2c3e50; transform: scale(1.1); }
-        .info-icon-danger { color: #e74c3c; }
-        .info-icon-danger:hover { color: #c0392b; }
-
+        .kpi-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #3498db; }
         .table-scrollable { max-height: 400px; overflow-y: auto; }
         .select2-container .select2-selection--single { height: 32px; }
     </style>
@@ -54,35 +47,11 @@
                 </div>
             </div>
 
-            <!-- Bagian KPI dengan Icon Detail -->
             <div class="row mb-4">
-                <div class="col-md-3">
-                    <div class="kpi-card" style="border-left-color: #2ecc71;">
-                        <span class="text-muted small fw-bold text-uppercase">PM Compliance Rate</span>
-                        <h3 class="fw-bold mt-1 mb-0 text-success" id="valCompliance">0%</h3>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="kpi-card" style="border-left-color: #3498db;">
-                        <i class="fa-solid fa-circle-info info-icon" onclick="bukaModalDetailKPI('Total')" title="Lihat Detail Rencana"></i>
-                        <span class="text-muted small fw-bold text-uppercase">Total Rencana PM</span>
-                        <h3 class="fw-bold mt-1 mb-0" id="valTotalJadwal">0</h3>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="kpi-card" style="border-left-color: #e74c3c;">
-                        <i class="fa-solid fa-circle-exclamation info-icon info-icon-danger" onclick="bukaModalDetailKPI('Overdue')" title="Lihat Detail Overdue"></i>
-                        <span class="text-muted small fw-bold text-uppercase">Terlambat (Overdue)</span>
-                        <h3 class="fw-bold mt-1 mb-0 text-danger" id="valOverdue">0</h3>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="kpi-card" style="border-left-color: #f39c12;">
-                        <i class="fa-solid fa-circle-info info-icon" onclick="bukaModalDetailKPI('Completed')" title="Lihat Detail Selesai"></i>
-                        <span class="text-muted small fw-bold text-uppercase">Selesai (Completed)</span>
-                        <h3 class="fw-bold mt-1 mb-0 text-primary" id="valCompleted">0</h3>
-                    </div>
-                </div>
+                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #2ecc71;"><span class="text-muted small fw-bold text-uppercase">PM Compliance Rate</span><h3 class="fw-bold mt-1 mb-0 text-success" id="valCompliance">0%</h3></div></div>
+                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #3498db;"><span class="text-muted small fw-bold text-uppercase">Total Rencana PM</span><h3 class="fw-bold mt-1 mb-0" id="valTotalJadwal">0</h3></div></div>
+                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #e74c3c;"><span class="text-muted small fw-bold text-uppercase">Terlambat (Overdue)</span><h3 class="fw-bold mt-1 mb-0 text-danger" id="valOverdue">0</h3></div></div>
+                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #f39c12;"><span class="text-muted small fw-bold text-uppercase">Selesai (Completed)</span><h3 class="fw-bold mt-1 mb-0 text-primary" id="valCompleted">0</h3></div></div>
             </div>
 
             <div class="card shadow-sm border-0 mb-4 p-3 bg-white">
@@ -137,7 +106,6 @@
                                     <th>ID Mesin</th>
                                     <th>Nama Mesin</th> 
                                     <th>Area</th>
-                                    <th>Tipe Pekerjaan</th> 
                                     <th>Jenis Pekerjaan PM</th>
                                     <th>Tgl Rencana</th>
                                     <th>Periode</th>
@@ -155,80 +123,6 @@
     </div>
 </div>
 
-<!-- ============================================== -->
-<!-- MODAL DETAIL HITUNGAN KPI (Otomatis dari JS) -->
-<!-- ============================================== -->
-<div class="modal fade" id="modalDetailKPI" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header text-white" id="headerModalKPI">
-                <h5 class="modal-title fw-bold" id="judulModalKPI"><i class="fa-solid fa-list"></i> Detail Hitungan</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted small mb-2" id="deskripsiModalKPI">Berikut adalah rincian pekerjaan yang masuk dalam kategori ini.</p>
-                <div class="table-responsive" style="max-height: 350px;">
-                    <table class="table table-sm table-bordered table-striped">
-                        <thead class="table-light">
-                            <tr>
-                                <th>No Task</th>
-                                <th>Unit Mesin</th>
-                                <th>Detail Pekerjaan PM</th>
-                                <th class="text-center">Tgl Rencana</th>
-                            </tr>
-                        </thead>
-                        <tbody id="listDetailKPI">
-                            <!-- Data disuntikkan via JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================== -->
-<!-- MODAL NOTIFIKASI OVERDUE (Peringatan & Alasan) -->
-<!-- ============================================== -->
-<div class="modal fade" id="modalNotifikasiOverdue" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-danger shadow-lg border-2">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title fw-bold"><i class="fa-solid fa-triangle-exclamation fa-beat"></i> Peringatan Sistem: Terdapat Pekerjaan Overdue!</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="fw-bold mb-1">Sistem mendeteksi ada <span id="angkaNotifOverdue" class="text-danger fs-5">0</span> pekerjaan PM yang melewati batas waktu rencana dan belum diselesaikan.</p>
-                <p class="text-muted small mb-3">Harap periksa daftar di bawah ini dan berikan alasan/keterlambatan kepada atasan terkait mengapa pekerjaan ini belum dieksekusi.</p>
-                
-                <div class="table-responsive mb-3 border rounded" style="max-height: 250px;">
-                    <table class="table table-sm table-hover m-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>No Task</th>
-                                <th>Unit Mesin</th>
-                                <th>Detail Pekerjaan PM</th>
-                                <th>Terlambat Sejak</th>
-                            </tr>
-                        </thead>
-                        <tbody id="listNotifOverdue">
-                            <!-- Data disuntikkan via JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="alert alert-warning mb-0 py-2">
-                    <i class="fa-solid fa-circle-info"></i> <strong>Catatan:</strong> Segera selesaikan tugas-tugas di atas dengan menekan tombol Centang (<i class="fa-solid fa-check text-success"></i>) pada tabel utama agar tidak mempengaruhi nilai Compliance Rate.
-                </div>
-            </div>
-            <div class="modal-footer bg-light p-2">
-                <button type="button" class="btn btn-secondary btn-sm fw-bold" data-bs-dismiss="modal">Saya Mengerti</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- (Sisa Modal Lainnya: Tambah, Edit, Selesai - Tidak berubah) -->
 <div class="modal fade" id="modalTambahJadwal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg">
@@ -240,8 +134,12 @@
                 <form id="formTambahPM" onsubmit="tambahJadwalBaru(event)">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">No Task:</label>
-                            <input type="text" class="form-control form-control-sm" id="tambahNoTask" placeholder="Contoh: PM-2026-001" required>
+                            <label class="form-label fw-bold small">No Task (Tahun / Bulan):</label>
+                            <div class="d-flex gap-2">
+                                <select class="form-select form-select-sm" id="tambahTahunTask" required></select>
+                                <select class="form-select form-select-sm" id="tambahBulanTask" required></select>
+                            </div>
+                            <small class="text-muted">Nomor urut dibuat otomatis oleh sistem.</small>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small">Area:</label>
@@ -252,15 +150,6 @@
                         <label class="form-label fw-bold small text-primary"><i class="fa-solid fa-search"></i> Unit Mesin / Alat (Ketik untuk mencari):</label>
                         <select class="form-select form-select-sm" id="tambahUnit" style="width: 100%;" required>
                             <option value="">Memuat data mesin...</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small">Tipe Pekerjaan:</label>
-                        <select class="form-select form-select-sm" id="tambahTipePekerjaan" required>
-                            <option value="Preventive">Preventive</option>
-                            <option value="Corrective">Corrective</option>
-                            <option value="Overhaul">Overhaul</option>
-                            <option value="Predictive">Predictive</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -302,8 +191,13 @@
                     <input type="hidden" id="editId">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">No Task:</label>
-                            <input type="text" class="form-control form-control-sm" id="editNoTask" required>
+                            <label class="form-label fw-bold small">No Task (Tahun / Bulan / Urut):</label>
+                            <div class="d-flex gap-2">
+                                <select class="form-select form-select-sm" id="editTahunTask" style="max-width:90px;" required></select>
+                                <select class="form-select form-select-sm" id="editBulanTask" style="max-width:135px;" required></select>
+                                <input type="number" class="form-control form-control-sm" id="editUrutTask" min="1" max="999" style="max-width:75px;" required>
+                            </div>
+                            <small class="text-muted">Kombinasi tahun-bulan-urut harus unik.</small>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small">Area:</label>
@@ -313,15 +207,6 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold small text-primary"><i class="fa-solid fa-search"></i> Unit Mesin / Alat (Ketik untuk mencari):</label>
                         <select class="form-select form-select-sm" id="editUnit" style="width: 100%;" required></select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small text-primary">Tipe Pekerjaan:</label>
-                        <select class="form-select form-select-sm" id="editTipePekerjaan" required>
-                            <option value="Preventive">Preventive</option>
-                            <option value="Corrective">Corrective</option>
-                            <option value="Overhaul">Overhaul</option>
-                            <option value="Predictive">Predictive</option>
-                        </select>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Jenis Pekerjaan PM:</label>
@@ -380,7 +265,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Tipe Pekerjaan:</label>
-                        <select class="form-select form-select-sm bg-light fw-bold" id="selesaiTipePekerjaan" disabled>
+                        <select class="form-select form-select-sm" id="selesaiTipePekerjaan" required>
                             <option value="Preventive">Preventive</option>
                             <option value="Corrective">Corrective</option>
                             <option value="Overhaul">Overhaul</option>
@@ -400,7 +285,7 @@
                             <input type="text" class="form-control form-control-sm" id="selesaiSparepart" required>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Durasi Pekerjaan (Jam):</label>
+                            <label class="form-label fw-bold small">Durasi Pekerjaan:</label>
                             <input type="text" class="form-control form-control-sm" id="selesaiDurasi" required>
                         </div>
                     </div>
@@ -413,16 +298,37 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalNotifOverdue" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-triangle-exclamation"></i> Jadwal PM Terlambat (Overdue)</h5>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-3">Terdapat jadwal PM yang melewati tanggal rencana. Mohon isi alasan/penyebab keterlambatan berikut (opsional, boleh dilewati):</p>
+                <div id="daftarOverdueNotif" class="mb-2" style="max-height: 350px; overflow-y: auto;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="tutupNotifOverdue()">Nanti Saja</button>
+                <button type="button" class="btn btn-danger btn-sm fw-bold" onclick="simpanAlasanOverdue()">Simpan Alasan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
     const userRole = "{{ session.role }}";
+    const currentUsername = "{{ session.username }}";
+    const loginToken = "{{ session.get('login_token', '') }}";
     let dataJadwalGlobal = []; 
     let dataMasterGlobal = [];
-    let notifikasiOverdueSudahTampil = false; // Flag agar pop-up peringatan tidak muncul terus menerus saat search/filter
 
+    // INISIALISASI MASTER DATA (Area & Mesin)
     function populateDropdowns(data) {
         let optGroups = {};
         let uniqueAreas = new Set();
@@ -434,6 +340,7 @@
             optGroups[namaArea].push(m);
         });
 
+        // 1. Populasi Dropdown Mesin (Select2)
         let opsiMesinHtml = '<option value="">-- Ketik ID atau Nama Mesin --</option>';
         for(let area in optGroups) {
             opsiMesinHtml += `<optgroup label="${area}">`;
@@ -446,6 +353,7 @@
         $('#tambahUnit').select2({ theme: 'bootstrap-5', dropdownParent: $('#modalTambahJadwal') });
         $('#editUnit').select2({ theme: 'bootstrap-5', dropdownParent: $('#modalEditJadwal') });
 
+        // 2. Populasi Dropdown Area (Filter & Form)
         let opsiAreaHtml = '<option value="">-- Pilih Area --</option>';
         let filterAreaHtml = '<option value="semua">Semua Area</option>';
         [...uniqueAreas].sort().forEach(a => {
@@ -456,20 +364,43 @@
         $('#filterArea').html(filterAreaHtml);
     }
 
+    // FUNGSI MEMUAT JADWAL TABEL
+    // Helper: pecah no_task jadi {tahun, bulan, urut}. Mendukung format lama "PM-2026-09-001" & baru "2026-09-001".
+    function parseNoTask(noTask) {
+        let tahun = 0, bulan = 0, urut = 0;
+        if (noTask) {
+            const bagian = String(noTask).split('-');
+            if (bagian.length >= 3) {
+                const t = parseInt(bagian[bagian.length - 3]);
+                const b = parseInt(bagian[bagian.length - 2]);
+                const u = parseInt(bagian[bagian.length - 1]);
+                if (!isNaN(t)) tahun = t;
+                if (!isNaN(b)) bulan = b;
+                if (!isNaN(u)) urut = u;
+            }
+        }
+        return { tahun, bulan, urut };
+    }
+
     function loadJadwal() {
         fetch('/api/jadwal')
             .then(res => res.json())
             .then(data => {
+                // Urutkan berdasarkan No Task (tahun-bulan-urut) terbaru/terbesar di atas
+                data = [...data].sort((a, b) => {
+                    const pa = parseNoTask(a.no_task);
+                    const pb = parseNoTask(b.no_task);
+                    if (pb.tahun !== pa.tahun) return pb.tahun - pa.tahun;
+                    if (pb.bulan !== pa.bulan) return pb.bulan - pa.bulan;
+                    return pb.urut - pa.urut;
+                });
                 dataJadwalGlobal = data; 
                 let html = '';
                 let hariIni = new Date();
                 hariIni.setHours(0, 0, 0, 0);
 
-                let jumlahOverdueBaru = 0;
-                let listOverdueHtml = '';
-
                 if (data.length === 0) {
-                    html = `<tr><td colspan="11" class="text-center text-muted">Belum ada data jadwal PM</td></tr>`;
+                    html = `<tr><td colspan="10" class="text-center text-muted">Belum ada data jadwal PM</td></tr>`;
                 } else {
                     data.forEach(item => {
                         let tglRencana = '-';
@@ -481,7 +412,6 @@
                             } else { tglRencana = item.tgl_rencana; }
                         }
                         
-                        // Cek Overdue
                         if (item.status === 'Scheduled' && planDateObj !== null && planDateObj < hariIni) {
                             item.status = 'Overdue';
                         }
@@ -490,10 +420,6 @@
                         if(item.status === 'Completed') badgeColor = "bg-success";
                         if(item.status === 'Overdue') badgeColor = "bg-danger";
                         if(item.status === 'Scheduled') badgeColor = "bg-primary";
-                        
-                        let badgeTipeColor = "bg-info text-dark";
-                        if(item.tipe_pekerjaan === 'Corrective') badgeTipeColor = "bg-danger";
-                        if(item.tipe_pekerjaan === 'Overhaul') badgeTipeColor = "bg-dark";
 
                         let actionButtons = '';
                         if (item.status !== 'Completed') {
@@ -507,21 +433,9 @@
                                 <button class="btn btn-sm btn-danger py-0 px-2 fw-bold ms-1" onclick="hapusJadwal(${item.id})" title="Hapus"><i class="fa-solid fa-trash"></i></button>`;
                         }
 
+                        // MENCARI NAMA MESIN DENGAN AMAN
                         let mesinMstr = dataMasterGlobal.find(m => m.id_mesin === item.id_mesin);
                         let namaTampil = mesinMstr ? mesinMstr.nama_mesin : '-';
-
-                        // Mengumpulkan data untuk notifikasi Overdue pertama kali halaman dimuat
-                        if(item.status === 'Overdue' && !notifikasiOverdueSudahTampil) {
-                            jumlahOverdueBaru++;
-                            listOverdueHtml += `
-                                <tr>
-                                    <td><span class="badge bg-secondary">${item.no_task}</span></td>
-                                    <td class="fw-bold">${namaTampil} <br><small class="text-muted fw-normal">${item.id_mesin}</small></td>
-                                    <td>${item.jenis_pekerjaan}</td>
-                                    <td class="text-danger fw-bold">${tglRencana}</td>
-                                </tr>
-                            `;
-                        }
 
                         html += `
                             <tr data-status="${item.status || 'Scheduled'}" data-tgl="${tglRencana}" data-area="${(item.area || '').toLowerCase()}">
@@ -529,84 +443,20 @@
                                 <td class="text-primary fw-bold text-nowrap">${item.id_mesin || '-'}</td>
                                 <td class="fw-bold">${namaTampil}</td> 
                                 <td><span class="badge bg-secondary">${item.area || '-'}</span></td>
-                                <td><span class="badge ${badgeTipeColor}">${item.tipe_pekerjaan || 'Preventive'}</span></td>
                                 <td>${item.jenis_pekerjaan || '-'}</td>
                                 <td class="text-nowrap">${tglRencana}</td>
                                 <td>${item.periode || '-'}</td>
-                                <td><span class="badge ${badgeColor}"><i class="fa-solid fa-circle-info me-1 d-none detail-indicator"></i>${item.status || 'Scheduled'}</span></td>
+                                <td><span class="badge ${badgeColor}">${item.status || 'Scheduled'}</span></td>
                                 <td><strong>${item.dibuat_oleh || 'Sistem'}</strong></td>
                                 <td class="text-center text-nowrap">${actionButtons}</td>
                             </tr>
                         `;
                     });
                 }
-                
                 document.getElementById('tabelJadwalList').innerHTML = html;
                 hitungStatistikDanCompliance(); 
-
-                // Menampilkan Modal Notifikasi Jika ada Overdue & belum tampil
-                if (jumlahOverdueBaru > 0 && !notifikasiOverdueSudahTampil) {
-                    document.getElementById('angkaNotifOverdue').innerText = jumlahOverdueBaru;
-                    document.getElementById('listNotifOverdue').innerHTML = listOverdueHtml;
-                    new bootstrap.Modal(document.getElementById('modalNotifikasiOverdue')).show();
-                    notifikasiOverdueSudahTampil = true; 
-                }
+                cekNotifikasiOverdue();
             });
-    }
-
-    // FUNGSI BARU: MENAMPILKAN DETAIL HITUNGAN KPI (List Pekerjaan)
-    function bukaModalDetailKPI(tipe) {
-        let rows = document.querySelectorAll('#tabelJadwalList tr');
-        let listHtml = '';
-        let judul = '';
-        let bgColor = '';
-        let validRowsCount = 0;
-
-        rows.forEach(row => {
-            if (row.style.display !== 'none' && row.hasAttribute('data-status')) {
-                const statusRow = row.getAttribute('data-status');
-                const noTask = row.cells[0].innerText;
-                const namaMesin = row.cells[2].innerText;
-                const jenisPekerjaan = row.cells[5].innerText;
-                const tglRencana = row.cells[6].innerText;
-
-                // Cek apakah baris ini masuk kategori yang diklik
-                if (tipe === 'Total' || (tipe === 'Overdue' && statusRow === 'Overdue') || (tipe === 'Completed' && statusRow === 'Completed')) {
-                    validRowsCount++;
-                    listHtml += `
-                        <tr>
-                            <td><span class="badge bg-secondary">${noTask}</span></td>
-                            <td class="fw-bold">${namaMesin}</td>
-                            <td>${jenisPekerjaan}</td>
-                            <td class="text-center">${tglRencana}</td>
-                        </tr>
-                    `;
-                }
-            }
-        });
-
-        if (validRowsCount === 0) {
-            listHtml = `<tr><td colspan="4" class="text-center text-muted">Tidak ada data untuk kategori ini.</td></tr>`;
-        }
-
-        const h = document.getElementById('headerModalKPI');
-        h.classList.remove('bg-primary', 'bg-danger', 'bg-success', 'bg-info');
-        
-        if (tipe === 'Total') {
-            judul = 'Detail Total Rencana PM';
-            h.classList.add('bg-primary');
-        } else if (tipe === 'Overdue') {
-            judul = 'Rincian Pekerjaan Terlambat (Overdue)';
-            h.classList.add('bg-danger');
-        } else if (tipe === 'Completed') {
-            judul = 'Rincian Pekerjaan Selesai';
-            h.classList.add('bg-success');
-        }
-
-        document.getElementById('judulModalKPI').innerHTML = `<i class="fa-solid fa-list"></i> ${judul} (${validRowsCount})`;
-        document.getElementById('listDetailKPI').innerHTML = listHtml;
-        
-        new bootstrap.Modal(document.getElementById('modalDetailKPI')).show();
     }
 
     function filterDataPM() {
@@ -655,7 +505,7 @@
         document.getElementById('selesaiIdJadwal').value = item.id;
         document.getElementById('selesaiUnit').value = item.id_mesin;
         document.getElementById('selesaiTglEksekusi').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        document.getElementById('selesaiTipePekerjaan').value = item.tipe_pekerjaan || "Preventive";
+        document.getElementById('selesaiTipePekerjaan').value = "Preventive";
         document.getElementById('selesaiPenyebab').value = "Kondisi normal, pengecekan rutin berkala."; 
         document.getElementById('selesaiUraian').value = item.jenis_pekerjaan; 
         document.getElementById('selesaiSparepart').value = "-";
@@ -686,10 +536,18 @@
         if(!item) return;
         
         document.getElementById('editId').value = item.id;
-        document.getElementById('editNoTask').value = item.no_task;
+
+        // Pecah no_task yang ada (mendukung format lama "PM-2026-09-001" maupun format baru "2026-09-001")
+        const now = new Date();
+        const parsed = parseNoTask(item.no_task);
+        const tahunTerdeteksi = parsed.tahun || now.getFullYear();
+        const bulanTerdeteksi = parsed.bulan ? String(parsed.bulan).padStart(2, '0') : String(now.getMonth() + 1).padStart(2, '0');
+        const urutTerdeteksi = parsed.urut || 1;
+        isiPilihanTahunBulan('edit', tahunTerdeteksi, bulanTerdeteksi);
+        document.getElementById('editUrutTask').value = urutTerdeteksi;
+
         document.getElementById('editArea').value = item.area;
         $('#editUnit').val(item.id_mesin).trigger('change');
-        document.getElementById('editTipePekerjaan').value = item.tipe_pekerjaan || 'Preventive';
         document.getElementById('editPekerjaan').value = item.jenis_pekerjaan;
         
         let tglHanyaTanggal = '';
@@ -705,11 +563,13 @@
 
     function simpanEditJadwal(event) {
         event.preventDefault();
+        const tahunPilih = document.getElementById('editTahunTask').value;
+        const bulanPilih = document.getElementById('editBulanTask').value;
+        const urutPilih = String(parseInt(document.getElementById('editUrutTask').value) || 1).padStart(3, '0');
         const dataInput = {
-            no_task: document.getElementById('editNoTask').value,
+            no_task: `${tahunPilih}-${bulanPilih}-${urutPilih}`,
             id_mesin: $('#editUnit').val(),
             area: document.getElementById('editArea').value,
-            tipe_pekerjaan: document.getElementById('editTipePekerjaan').value,
             jenis_pekerjaan: document.getElementById('editPekerjaan').value,
             tgl_rencana: document.getElementById('editTglRencana').value,
             periode: document.getElementById('editPeriode').value,
@@ -722,10 +582,10 @@
     function tambahJadwalBaru(event) {
         event.preventDefault();
         const dataInput = {
-            no_task: document.getElementById('tambahNoTask').value,
+            tahun_task: document.getElementById('tambahTahunTask').value,
+            bulan_task: document.getElementById('tambahBulanTask').value,
             id_mesin: $('#tambahUnit').val(),
             area: document.getElementById('tambahArea').value,
-            tipe_pekerjaan: document.getElementById('tambahTipePekerjaan').value,
             jenis_pekerjaan: document.getElementById('tambahPekerjaan').value,
             tgl_rencana: document.getElementById('tambahTglRencana').value,
             periode: document.getElementById('tambahPeriode').value,
@@ -736,6 +596,7 @@
             alert(res.message); 
             bootstrap.Modal.getInstance(document.getElementById('modalTambahJadwal')).hide(); 
             document.getElementById('formTambahPM').reset(); $('#tambahUnit').val('').trigger('change');
+            isiPilihanTahunBulan('tambah');
             loadJadwal(); 
         });
     }
@@ -763,13 +624,112 @@
         b.className = total === 0 ? "fw-bold mt-1 mb-0 text-muted" : (rate < 80 ? "fw-bold mt-1 mb-0 text-danger" : (rate < 95 ? "fw-bold mt-1 mb-0 text-warning" : "fw-bold mt-1 mb-0 text-success"));
     }
 
+    // ================= NOTIFIKASI OVERDUE =================
+    // Muncul HANYA sekali per sesi login (dibedakan per username + login_token dari server).
+    // Berpindah halaman/refresh dalam sesi login yang sama TIDAK memicu notif lagi.
+    // Logout lalu login lagi (akun sama atau beda) akan membuat login_token baru -> notif muncul lagi.
+    function cekNotifikasiOverdue() {
+        const KEY = 'pmOverdueNotifSesi';
+        const penandaSesiIni = currentUsername + '::' + loginToken;
+
+        if (!loginToken) return; // jaga-jaga kalau session belum siap
+        if (sessionStorage.getItem(KEY) === penandaSesiIni) return; // sudah pernah muncul di sesi login ini
+
+        const hariIni = new Date(); hariIni.setHours(0, 0, 0, 0);
+        const daftarOverdue = dataJadwalGlobal.filter(item => {
+            let status = item.status;
+            if (status === 'Scheduled' && item.tgl_rencana) {
+                const d = new Date(item.tgl_rencana);
+                if (!isNaN(d) && d < hariIni) status = 'Overdue';
+            }
+            return status === 'Overdue' && !item.alasan_overdue;
+        });
+
+        // Tandai sudah dicek untuk sesi login ini, terlepas ada overdue atau tidak,
+        // supaya tidak muncul berulang tiap kali loadJadwal() dipanggil (misal karena filter/reload).
+        sessionStorage.setItem(KEY, penandaSesiIni);
+
+        if (daftarOverdue.length === 0) return;
+
+        let html = '';
+        daftarOverdue.forEach(item => {
+            html += `
+                <div class="border rounded p-2 mb-2">
+                    <div class="fw-bold small">${item.no_task || '-'} &mdash; ${item.id_mesin || '-'} <span class="text-muted">(${item.area || '-'})</span></div>
+                    <div class="text-muted small mb-1">Rencana: ${item.tgl_rencana || '-'} | ${item.jenis_pekerjaan || '-'}</div>
+                    <input type="text" class="form-control form-control-sm inputAlasanOverdue" data-id="${item.id}" placeholder="Alasan/penyebab keterlambatan...">
+                </div>`;
+        });
+        document.getElementById('daftarOverdueNotif').innerHTML = html;
+        new bootstrap.Modal(document.getElementById('modalNotifOverdue')).show();
+    }
+
+    function tutupNotifOverdue() {
+        const modalEl = document.getElementById('modalNotifOverdue');
+        const instance = bootstrap.Modal.getInstance(modalEl);
+        if (instance) instance.hide();
+    }
+
+    function simpanAlasanOverdue() {
+        const inputs = document.querySelectorAll('.inputAlasanOverdue');
+        const daftarPermintaan = [];
+        inputs.forEach(inp => {
+            const alasan = inp.value.trim();
+            if (alasan) {
+                daftarPermintaan.push(
+                    fetch('/api/jadwal/' + inp.dataset.id + '/alasan-overdue', {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ alasan_overdue: alasan })
+                    })
+                );
+            }
+        });
+        if (daftarPermintaan.length === 0) { tutupNotifOverdue(); return; }
+        Promise.all(daftarPermintaan).then(() => { tutupNotifOverdue(); loadJadwal(); });
+    }
+
+    // Mengisi dropdown Tahun & Bulan untuk No Task (dipakai di Tambah & Edit).
+    // Rentang tahun otomatis mengikuti tahun berjalan (tidak perlu diubah manual tiap tahun).
+    function isiPilihanTahunBulan(prefix, tahunTerpilih, bulanTerpilih) {
+        const namaBulan = ["01 - Januari", "02 - Februari", "03 - Maret", "04 - April", "05 - Mei", "06 - Juni", "07 - Juli", "08 - Agustus", "09 - September", "10 - Oktober", "11 - November", "12 - Desember"];
+        const now = new Date();
+        const tahunSekarang = now.getFullYear();
+        const tahunDefault = tahunTerpilih || tahunSekarang;
+        const bulanDefault = bulanTerpilih || String(now.getMonth() + 1).padStart(2, '0');
+
+        // Rentang: tahun sekarang -1 s/d +2, tapi selalu mencakup tahunDefault (misal saat edit data lama)
+        const tahunMin = Math.min(tahunSekarang - 1, tahunDefault);
+        const tahunMax = Math.max(tahunSekarang + 2, tahunDefault);
+
+        const selectTahun = document.getElementById(prefix + 'TahunTask');
+        selectTahun.innerHTML = '';
+        for (let t = tahunMin; t <= tahunMax; t++) {
+            const opt = document.createElement('option');
+            opt.value = t; opt.textContent = t;
+            if (t == tahunDefault) opt.selected = true;
+            selectTahun.appendChild(opt);
+        }
+
+        const selectBulan = document.getElementById(prefix + 'BulanTask');
+        selectBulan.innerHTML = '';
+        namaBulan.forEach((label, idx) => {
+            const val = String(idx + 1).padStart(2, '0');
+            const opt = document.createElement('option');
+            opt.value = val; opt.textContent = label;
+            if (val === bulanDefault) opt.selected = true;
+            selectBulan.appendChild(opt);
+        });
+    }
+
+    // PENTING: PROSES BERANTAI (CHAINING) UNTUK MENCEGAH NAMA MESIN HILANG SAAT REFRESH
     document.addEventListener("DOMContentLoaded", function() {
+        isiPilihanTahunBulan('tambah');
         fetch('/api/master-mesin')
         .then(res => res.json())
         .then(data => {
             dataMasterGlobal = data;
             populateDropdowns(data); 
-            loadJadwal(); 
+            loadJadwal(); // Tabel baru di-load SETELAH data master 100% siap
         }).catch(err => console.error("Error API Master:", err));     
     });
 </script>
