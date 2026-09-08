@@ -1,5 +1,6 @@
 import os
 import time
+import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, make_response
 from flask_cors import CORS
 import pymysql
@@ -229,17 +230,44 @@ def handle_jadwal():
             if request.method == 'GET':
                 cursor.execute("SELECT * FROM jadwal_pm ORDER BY id DESC")
                 return jsonify(cursor.fetchall())
+            
             elif request.method == 'POST':
                 if 'loggedin' not in session: return jsonify({"error": "Belum login"}), 403
                 data = request.json
-                # Menambahkan tipe_pekerjaan ke kolom baru
+                
+                # --- LOGIKA AUTO-GENERATE NO TASK ---
+                now = datetime.datetime.now()
+                # Membuat Prefix: PM-Tahun-Bulan- (contoh: PM-2026-09-)
+                prefix = f"PM-{now.strftime('%Y-%m')}-" 
+                
+                # Cari no_task terakhir di DB yang memiliki prefix bulan dan tahun yang sama
+                cursor.execute("SELECT no_task FROM jadwal_pm WHERE no_task LIKE %s ORDER BY no_task DESC LIMIT 1", (prefix + '%',))
+                last_task = cursor.fetchone()
+                
+                if last_task and last_task['no_task']:
+                    try:
+                        # Ambil 3 angka terakhir, lalu tambahkan 1
+                        last_seq = int(last_task['no_task'].split('-')[-1])
+                        next_seq = last_seq + 1
+                    except ValueError:
+                        next_seq = 1
+                else:
+                    # Jika belum ada jadwal di bulan ini, mulai dari 1
+                    next_seq = 1
+                    
+                # Gabungkan prefix dengan nomor urut format 3 digit (001, 002, dst)
+                no_task_otomatis = f"{prefix}{next_seq:03d}" 
+                # ------------------------------------
+                
                 sql = """INSERT INTO jadwal_pm (no_task, id_mesin, area, jenis_pekerjaan, tipe_pekerjaan, tgl_rencana, periode, status, dibuat_oleh) 
                          VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-                cursor.execute(sql, (data.get('no_task'), data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tipe_pekerjaan', 'Preventive'), data.get('tgl_rencana'), data.get('periode'), 'Scheduled', session['username']))
+                cursor.execute(sql, (no_task_otomatis, data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tipe_pekerjaan', 'Preventive'), data.get('tgl_rencana'), data.get('periode'), 'Scheduled', session['username']))
                 conn.commit()
-                return jsonify({"status": "success", "message": "Jadwal berhasil ditambahkan!"})
+                
+                return jsonify({"status": "success", "message": f"Jadwal ditambah! No Task: {no_task_otomatis}"})
     finally:
         conn.close()
+
 
 @app.route('/api/jadwal/<int:id>/selesai', methods=['PUT'])
 def selesaikan_jadwal(id):
