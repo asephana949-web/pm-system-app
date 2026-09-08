@@ -192,7 +192,11 @@ def get_master_mesin():
 
 @app.route('/api/master-mesin/<id_mesin>', methods=['PUT'])
 def update_master_mesin(id_mesin):
-    if session.get('role') != 'Admin': return jsonify({"status": "error", "message": "Akses Ditolak!"}), 403
+    # 1. PERUBAHAN AKSES ROLE DI SINI
+    allowed_roles = ['Admin', 'preventive', 'perencaan', 'kasek_PPP']
+    if session.get('role') not in allowed_roles: 
+        return jsonify({"status": "error", "message": "Akses Ditolak!"}), 403
+    
     data = request.json
     conn = get_db_connection()
     try:
@@ -223,9 +227,10 @@ def handle_jadwal():
             elif request.method == 'POST':
                 if 'loggedin' not in session: return jsonify({"error": "Belum login"}), 403
                 data = request.json
-                sql = """INSERT INTO jadwal_pm (no_task, id_mesin, area, jenis_pekerjaan, tgl_rencana, periode, status, dibuat_oleh) 
-                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
-                cursor.execute(sql, (data.get('no_task'), data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tgl_rencana'), data.get('periode'), 'Scheduled', session['username']))
+                # Menambahkan tipe_pekerjaan ke kolom baru
+                sql = """INSERT INTO jadwal_pm (no_task, id_mesin, area, jenis_pekerjaan, tipe_pekerjaan, tgl_rencana, periode, status, dibuat_oleh) 
+                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+                cursor.execute(sql, (data.get('no_task'), data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tipe_pekerjaan', 'Preventive'), data.get('tgl_rencana'), data.get('periode'), 'Scheduled', session['username']))
                 conn.commit()
                 return jsonify({"status": "success", "message": "Jadwal berhasil ditambahkan!"})
     finally:
@@ -241,18 +246,20 @@ def selesaikan_jadwal(id):
             cursor.execute("SELECT * FROM jadwal_pm WHERE id=%s", (id,))
             jadwal = cursor.fetchone()
             if not jadwal: return jsonify({"status": "error", "message": "Jadwal tidak ditemukan!"}), 404
-
             cursor.execute("UPDATE jadwal_pm SET status='Completed' WHERE id=%s", (id,))
             
             is_dt = data.get('is_downtime', 'Tidak')
             dt_jam = data.get('downtime_jam', 0)
             if not dt_jam or str(dt_jam).strip() == '': dt_jam = 0
             
+            # Tipe pekerjaan dipilih user langsung di pop-up "Selesaikan Pekerjaan"
+            tipe_pekerjaan_history = data.get('tipe_pekerjaan') if data.get('tipe_pekerjaan') else 'Preventive'
+            
             sql_history = """INSERT INTO riwayat_perbaikan (tgl_eksekusi, nama_alat, tipe_pekerjaan, penyebab_kerusakan, uraian_pekerjaan, sparepart_terpakai, durasi_jam, dibuat_oleh, is_downtime, downtime_jam) 
                              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-            cursor.execute(sql_history, (data.get('tgl_eksekusi'), jadwal['id_mesin'], 'Preventive', data.get('penyebab'), data.get('uraian'), data.get('sparepart'), data.get('durasi'), session['username'], is_dt, dt_jam))
+            cursor.execute(sql_history, (data.get('tgl_eksekusi'), jadwal['id_mesin'], tipe_pekerjaan_history, data.get('penyebab'), data.get('uraian'), data.get('sparepart'), data.get('durasi'), session['username'], is_dt, dt_jam))
             conn.commit()
-            return jsonify({"status": "success", "message": "Pekerjaan selesai & masuk ke History dengan rincian Downtime!"})
+            return jsonify({"status": "success", "message": "Pekerjaan selesai & masuk ke History!"})
     finally:
         conn.close()
 
@@ -264,8 +271,9 @@ def manage_jadwal(id):
         with conn.cursor() as cursor:
             if request.method == 'PUT':
                 data = request.json
-                sql = """UPDATE jadwal_pm SET no_task=%s, id_mesin=%s, area=%s, jenis_pekerjaan=%s, tgl_rencana=%s, periode=%s, status=%s WHERE id=%s"""
-                cursor.execute(sql, (data.get('no_task'), data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tgl_rencana'), data.get('periode'), data.get('status'), id))
+                # Menambahkan update untuk tipe_pekerjaan
+                sql = """UPDATE jadwal_pm SET no_task=%s, id_mesin=%s, area=%s, jenis_pekerjaan=%s, tipe_pekerjaan=%s, tgl_rencana=%s, periode=%s, status=%s WHERE id=%s"""
+                cursor.execute(sql, (data.get('no_task'), data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tipe_pekerjaan'), data.get('tgl_rencana'), data.get('periode'), data.get('status'), id))
                 pesan = "Data jadwal diubah!"
             elif request.method == 'DELETE':
                 cursor.execute("DELETE FROM jadwal_pm WHERE id = %s", (id,))
@@ -274,6 +282,7 @@ def manage_jadwal(id):
             return jsonify({"status": "success", "message": pesan})
     finally:
         conn.close()
+
 
 # ==========================================
 # API: RIWAYAT PERBAIKAN

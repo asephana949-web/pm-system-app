@@ -40,10 +40,7 @@
                     <h2 class="m-0"><i class="fa-solid fa-calendar-check text-primary"></i> Jadwal & Compliance Preventive Maintenance</h2>
                     <small class="text-muted">Pantau kepatuhan jadwal PM, filter dinamis, dan riwayat penundaan tugas.</small>
                 </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-success btn-sm fw-bold py-2" onclick="exportToExcel()">
-                        <i class="fa-solid fa-file-excel"></i> Export Excel
-                    </button>
+                <div>
                     <button class="btn btn-primary btn-sm fw-bold py-2" data-bs-toggle="modal" data-bs-target="#modalTambahJadwal">
                         <i class="fa-solid fa-plus"></i> Tambah Rencana PM
                     </button>
@@ -102,7 +99,7 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive table-scrollable">
-                        <table class="table table-hover table-striped m-0 align-middle" id="tabelJadwalAsli">
+                        <table class="table table-hover table-striped m-0 align-middle">
                             <thead class="table-dark">
                                 <tr>
                                     <th>No. Task</th>
@@ -114,7 +111,7 @@
                                     <th>Periode</th>
                                     <th>Status</th>
                                     <th>Dibuat Oleh</th>
-                                    <th class="text-center aksi-kolom">Aksi</th>
+                                    <th class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="tabelJadwalList"></tbody>
@@ -258,6 +255,14 @@
                         </div>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label fw-bold small">Tipe Pekerjaan:</label>
+                        <select class="form-select form-select-sm" id="selesaiTipePekerjaan" required>
+                            <option value="Preventive">Preventive</option>
+                            <option value="Corrective">Corrective</option>
+                            <option value="Overhaul">Overhaul</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label fw-bold small">Kondisi Alat (Penyebab):</label>
                         <textarea class="form-control form-control-sm" id="selesaiPenyebab" rows="2" required></textarea>
                     </div>
@@ -271,24 +276,10 @@
                             <input type="text" class="form-control form-control-sm" id="selesaiSparepart" required>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Durasi Pekerjaan (Jam):</label>
+                            <label class="form-label fw-bold small">Durasi Pekerjaan:</label>
                             <input type="text" class="form-control form-control-sm" id="selesaiDurasi" required>
                         </div>
                     </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Menyebabkan Downtime?</label>
-                            <select class="form-select form-select-sm" id="selesaiIsDowntime" onchange="toggleDowntimeSelesai()" required>
-                                <option value="Tidak">Tidak</option>
-                                <option value="Ya">Ya (Mesin Mati)</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Total Downtime (Jam):</label>
-                            <input type="number" step="any" min="0" class="form-control form-control-sm bg-light" id="selesaiDowntimeJam" value="0" readonly required>
-                        </div>
-                    </div>
-                    
                     <div class="d-grid">
                         <button type="submit" class="btn btn-success btn-sm fw-bold">Kirim ke History</button>
                     </div>
@@ -301,14 +292,13 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<!-- TAMBAHAN: Library SheetJS untuk Export Excel -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
     const userRole = "{{ session.role }}";
     let dataJadwalGlobal = []; 
     let dataMasterGlobal = [];
 
+    // INISIALISASI MASTER DATA (Area & Mesin)
     function populateDropdowns(data) {
         let optGroups = {};
         let uniqueAreas = new Set();
@@ -320,6 +310,7 @@
             optGroups[namaArea].push(m);
         });
 
+        // 1. Populasi Dropdown Mesin (Select2)
         let opsiMesinHtml = '<option value="">-- Ketik ID atau Nama Mesin --</option>';
         for(let area in optGroups) {
             opsiMesinHtml += `<optgroup label="${area}">`;
@@ -332,6 +323,7 @@
         $('#tambahUnit').select2({ theme: 'bootstrap-5', dropdownParent: $('#modalTambahJadwal') });
         $('#editUnit').select2({ theme: 'bootstrap-5', dropdownParent: $('#modalEditJadwal') });
 
+        // 2. Populasi Dropdown Area (Filter & Form)
         let opsiAreaHtml = '<option value="">-- Pilih Area --</option>';
         let filterAreaHtml = '<option value="semua">Semua Area</option>';
         [...uniqueAreas].sort().forEach(a => {
@@ -342,6 +334,7 @@
         $('#filterArea').html(filterAreaHtml);
     }
 
+    // FUNGSI MEMUAT JADWAL TABEL
     function loadJadwal() {
         fetch('/api/jadwal')
             .then(res => res.json())
@@ -385,6 +378,7 @@
                                 <button class="btn btn-sm btn-danger py-0 px-2 fw-bold ms-1" onclick="hapusJadwal(${item.id})" title="Hapus"><i class="fa-solid fa-trash"></i></button>`;
                         }
 
+                        // MENCARI NAMA MESIN DENGAN AMAN
                         let mesinMstr = dataMasterGlobal.find(m => m.id_mesin === item.id_mesin);
                         let namaTampil = mesinMstr ? mesinMstr.nama_mesin : '-';
 
@@ -399,7 +393,7 @@
                                 <td>${item.periode || '-'}</td>
                                 <td><span class="badge ${badgeColor}">${item.status || 'Scheduled'}</span></td>
                                 <td><strong>${item.dibuat_oleh || 'Sistem'}</strong></td>
-                                <td class="text-center text-nowrap aksi-kolom">${actionButtons}</td>
+                                <td class="text-center text-nowrap">${actionButtons}</td>
                             </tr>
                         `;
                     });
@@ -447,20 +441,7 @@
         filterDataPM();
     }
 
-    function toggleDowntimeSelesai() {
-        const isDown = document.getElementById('selesaiIsDowntime').value;
-        const inputDt = document.getElementById('selesaiDowntimeJam');
-        if(isDown === 'Ya') {
-            inputDt.readOnly = false;
-            inputDt.classList.remove('bg-light');
-            if(inputDt.value == 0) inputDt.value = 1;
-        } else {
-            inputDt.readOnly = true;
-            inputDt.classList.add('bg-light');
-            inputDt.value = 0;
-        }
-    }
-
+    // ACTION MODALS
     function bukaModalSelesai(id) {
         const item = dataJadwalGlobal.find(x => x.id === id);
         if(!item) return;
@@ -468,16 +449,11 @@
         document.getElementById('selesaiIdJadwal').value = item.id;
         document.getElementById('selesaiUnit').value = item.id_mesin;
         document.getElementById('selesaiTglEksekusi').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        document.getElementById('selesaiTipePekerjaan').value = "Preventive";
         document.getElementById('selesaiPenyebab').value = "Kondisi normal, pengecekan rutin berkala."; 
         document.getElementById('selesaiUraian').value = item.jenis_pekerjaan; 
         document.getElementById('selesaiSparepart').value = "-";
         document.getElementById('selesaiDurasi').value = "1 Jam";
-        
-        document.getElementById('selesaiIsDowntime').value = "Tidak";
-        document.getElementById('selesaiDowntimeJam').value = "0";
-        document.getElementById('selesaiDowntimeJam').readOnly = true;
-        document.getElementById('selesaiDowntimeJam').classList.add('bg-light');
-
         new bootstrap.Modal(document.getElementById('modalSelesaiPM')).show();
     }
 
@@ -486,12 +462,11 @@
         const id = document.getElementById('selesaiIdJadwal').value;
         const dataInput = {
             tgl_eksekusi: document.getElementById('selesaiTglEksekusi').value,
+            tipe_pekerjaan: document.getElementById('selesaiTipePekerjaan').value,
             penyebab: document.getElementById('selesaiPenyebab').value,
             uraian: document.getElementById('selesaiUraian').value,
             sparepart: document.getElementById('selesaiSparepart').value,
-            durasi: document.getElementById('selesaiDurasi').value,
-            is_downtime: document.getElementById('selesaiIsDowntime').value,
-            downtime_jam: document.getElementById('selesaiDowntimeJam').value
+            durasi: document.getElementById('selesaiDurasi').value
         };
         fetch('/api/jadwal/' + id + '/selesai', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataInput) })
         .then(res => res.json()).then(res => {
@@ -578,38 +553,15 @@
         b.innerText = rate + "%";
         b.className = total === 0 ? "fw-bold mt-1 mb-0 text-muted" : (rate < 80 ? "fw-bold mt-1 mb-0 text-danger" : (rate < 95 ? "fw-bold mt-1 mb-0 text-warning" : "fw-bold mt-1 mb-0 text-success"));
     }
-    
-    // TAMBAHAN: FUNGSI EXPORT EXCEL
-    function exportToExcel() {
-        let tabelAsli = document.getElementById("tabelJadwalAsli");
-        let tabelClone = tabelAsli.cloneNode(true);
-        
-        // Menghapus kolom 'Aksi' agar tombol-tombol tidak ikut ter-export
-        let rows = tabelClone.querySelectorAll("tr");
-        rows.forEach(row => {
-            let cells = row.querySelectorAll("th, td");
-            if (cells.length > 0 && cells[cells.length - 1].classList.contains('aksi-kolom')) {
-                row.removeChild(cells[cells.length - 1]);
-            }
-        });
-        
-        // Membersihkan row yang terkena filter (display: none)
-        let tbody = tabelClone.querySelector("tbody");
-        let validRows = Array.from(tbody.querySelectorAll("tr")).filter(tr => tr.style.display !== 'none');
-        tbody.innerHTML = "";
-        validRows.forEach(tr => tbody.appendChild(tr));
 
-        let wb = XLSX.utils.table_to_book(tabelClone, {sheet: "PM Schedule"});
-        XLSX.writeFile(wb, "Data_PM_Schedule.xlsx");
-    }
-
+    // PENTING: PROSES BERANTAI (CHAINING) UNTUK MENCEGAH NAMA MESIN HILANG SAAT REFRESH
     document.addEventListener("DOMContentLoaded", function() {
         fetch('/api/master-mesin')
         .then(res => res.json())
         .then(data => {
             dataMasterGlobal = data;
             populateDropdowns(data); 
-            loadJadwal(); 
+            loadJadwal(); // Tabel baru di-load SETELAH data master 100% siap
         }).catch(err => console.error("Error API Master:", err));     
     });
 </script>
