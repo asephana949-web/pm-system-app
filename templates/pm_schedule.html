@@ -188,11 +188,10 @@
 </div>
 
 <!-- ============================================== -->
-<!-- MODAL NOTIFIKASI OVERDUE DENGAN KOLOM ALASAN   -->
+<!-- MODAL NOTIFIKASI OVERDUE (Peringatan & Alasan) -->
 <!-- ============================================== -->
 <div class="modal fade" id="modalNotifikasiOverdue" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <!-- Diperlebar menjadi modal-xl agar kolom input alasan muat -->
-    <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-danger shadow-lg border-2">
             <div class="modal-header bg-danger text-white">
                 <h5 class="modal-title fw-bold"><i class="fa-solid fa-triangle-exclamation fa-beat"></i> Peringatan Sistem: Terdapat Pekerjaan Overdue!</h5>
@@ -200,39 +199,36 @@
             </div>
             <div class="modal-body">
                 <p class="fw-bold mb-1">Sistem mendeteksi ada <span id="angkaNotifOverdue" class="text-danger fs-5">0</span> pekerjaan PM yang melewati batas waktu rencana dan belum diselesaikan.</p>
-                <p class="text-muted small mb-3">Harap periksa daftar di bawah ini dan isi kolom alasan keterlambatan kepada atasan terkait mengapa pekerjaan ini belum dieksekusi.</p>
+                <p class="text-muted small mb-3">Harap periksa daftar di bawah ini dan berikan alasan/keterlambatan kepada atasan terkait mengapa pekerjaan ini belum dieksekusi.</p>
                 
-                <div class="table-responsive mb-3 border rounded" style="max-height: 350px;">
-                    <table class="table table-sm table-hover m-0 align-middle">
+                <div class="table-responsive mb-3 border rounded" style="max-height: 250px;">
+                    <table class="table table-sm table-hover m-0">
                         <thead class="table-light">
                             <tr>
-                                <th width="10%">No Task</th>
-                                <th width="20%">Unit Mesin</th>
-                                <th width="25%">Detail Pekerjaan PM</th>
-                                <th width="15%">Terlambat Sejak</th>
-                                <th width="30%">Alasan Overdue (Wajib Diisi)</th>
+                                <th>No Task</th>
+                                <th>Unit Mesin</th>
+                                <th>Detail Pekerjaan PM</th>
+                                <th>Terlambat Sejak</th>
                             </tr>
                         </thead>
                         <tbody id="listNotifOverdue">
-                            <!-- Data disuntikkan via JavaScript beserta <input> alasan -->
+                            <!-- Data disuntikkan via JavaScript -->
                         </tbody>
                     </table>
                 </div>
 
                 <div class="alert alert-warning mb-0 py-2">
-                    <i class="fa-solid fa-circle-info"></i> <strong>Catatan:</strong> Alasan yang Anda kirim akan dilaporkan. Segera selesaikan tugas-tugas di atas agar tidak mempengaruhi nilai Compliance Rate.
+                    <i class="fa-solid fa-circle-info"></i> <strong>Catatan:</strong> Segera selesaikan tugas-tugas di atas dengan menekan tombol Centang (<i class="fa-solid fa-check text-success"></i>) pada tabel utama agar tidak mempengaruhi nilai Compliance Rate.
                 </div>
             </div>
             <div class="modal-footer bg-light p-2">
-                <button type="button" class="btn btn-primary fw-bold" onclick="simpanAlasanOverdue()">
-                    <i class="fa-solid fa-floppy-disk"></i> Simpan Alasan & Tutup
-                </button>
+                <button type="button" class="btn btn-secondary btn-sm fw-bold" data-bs-dismiss="modal">Saya Mengerti</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- MODAL TAMBAH, EDIT, SELESAI -->
+<!-- (Sisa Modal Lainnya: Tambah, Edit, Selesai - Tidak berubah) -->
 <div class="modal fade" id="modalTambahJadwal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg">
@@ -425,6 +421,7 @@
     const userRole = "{{ session.role }}";
     let dataJadwalGlobal = []; 
     let dataMasterGlobal = [];
+    let notifikasiOverdueSudahTampil = false; // Flag agar pop-up peringatan tidak muncul terus menerus saat search/filter
 
     function populateDropdowns(data) {
         let optGroups = {};
@@ -484,6 +481,7 @@
                             } else { tglRencana = item.tgl_rencana; }
                         }
                         
+                        // Cek Overdue
                         if (item.status === 'Scheduled' && planDateObj !== null && planDateObj < hariIni) {
                             item.status = 'Overdue';
                         }
@@ -512,19 +510,15 @@
                         let mesinMstr = dataMasterGlobal.find(m => m.id_mesin === item.id_mesin);
                         let namaTampil = mesinMstr ? mesinMstr.nama_mesin : '-';
 
-                        // Mengumpulkan data untuk notifikasi Overdue dengan input Alasan
-                        // HANYA jika SessionStorage 'notifOverdueSudahTampil' belum bernilai 'true'
-                        if(item.status === 'Overdue' && !sessionStorage.getItem('notifOverdueSudahTampil')) {
+                        // Mengumpulkan data untuk notifikasi Overdue pertama kali halaman dimuat
+                        if(item.status === 'Overdue' && !notifikasiOverdueSudahTampil) {
                             jumlahOverdueBaru++;
                             listOverdueHtml += `
                                 <tr>
                                     <td><span class="badge bg-secondary">${item.no_task}</span></td>
                                     <td class="fw-bold">${namaTampil} <br><small class="text-muted fw-normal">${item.id_mesin}</small></td>
-                                    <td class="small">${item.jenis_pekerjaan}</td>
+                                    <td>${item.jenis_pekerjaan}</td>
                                     <td class="text-danger fw-bold">${tglRencana}</td>
-                                    <td>
-                                        <input type="text" class="form-control form-control-sm" id="alasan_overdue_${item.id}" placeholder="Ketik alasan keterlambatan...">
-                                    </td>
                                 </tr>
                             `;
                         }
@@ -550,28 +544,22 @@
                 document.getElementById('tabelJadwalList').innerHTML = html;
                 hitungStatistikDanCompliance(); 
 
-                // Menampilkan Modal Notifikasi Jika ada Overdue & belum tampil dalam sesi browser ini
-                if (jumlahOverdueBaru > 0 && !sessionStorage.getItem('notifOverdueSudahTampil')) {
+                // Menampilkan Modal Notifikasi Jika ada Overdue & belum tampil
+                if (jumlahOverdueBaru > 0 && !notifikasiOverdueSudahTampil) {
                     document.getElementById('angkaNotifOverdue').innerText = jumlahOverdueBaru;
                     document.getElementById('listNotifOverdue').innerHTML = listOverdueHtml;
                     new bootstrap.Modal(document.getElementById('modalNotifikasiOverdue')).show();
-                    // Set parameter sesi agar notif ini tidak muncul lagi meskipun di-refresh
-                    sessionStorage.setItem('notifOverdueSudahTampil', 'true'); 
+                    notifikasiOverdueSudahTampil = true; 
                 }
             });
     }
 
-    // Fungsi Submit Alasan Overdue
-    function simpanAlasanOverdue() {
-        alert("Alasan telah dicatat oleh sistem (Untuk menyimpan permanen ke database, pastikan backend memiliki field untuk menyimpan 'alasan_overdue').");
-        // Tutup modal
-        bootstrap.Modal.getInstance(document.getElementById('modalNotifikasiOverdue')).hide();
-    }
-
+    // FUNGSI BARU: MENAMPILKAN DETAIL HITUNGAN KPI (List Pekerjaan)
     function bukaModalDetailKPI(tipe) {
         let rows = document.querySelectorAll('#tabelJadwalList tr');
         let listHtml = '';
         let judul = '';
+        let bgColor = '';
         let validRowsCount = 0;
 
         rows.forEach(row => {
@@ -582,6 +570,7 @@
                 const jenisPekerjaan = row.cells[5].innerText;
                 const tglRencana = row.cells[6].innerText;
 
+                // Cek apakah baris ini masuk kategori yang diklik
                 if (tipe === 'Total' || (tipe === 'Overdue' && statusRow === 'Overdue') || (tipe === 'Completed' && statusRow === 'Completed')) {
                     validRowsCount++;
                     listHtml += `
@@ -616,6 +605,7 @@
 
         document.getElementById('judulModalKPI').innerHTML = `<i class="fa-solid fa-list"></i> ${judul} (${validRowsCount})`;
         document.getElementById('listDetailKPI').innerHTML = listHtml;
+        
         new bootstrap.Modal(document.getElementById('modalDetailKPI')).show();
     }
 
@@ -657,6 +647,7 @@
         filterDataPM();
     }
 
+    // ACTION MODALS
     function bukaModalSelesai(id) {
         const item = dataJadwalGlobal.find(x => x.id === id);
         if(!item) return;
