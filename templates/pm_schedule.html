@@ -344,10 +344,35 @@
     }
 
     // FUNGSI MEMUAT JADWAL TABEL
+    // Helper: pecah no_task jadi {tahun, bulan, urut}. Mendukung format lama "PM-2026-09-001" & baru "2026-09-001".
+    function parseNoTask(noTask) {
+        let tahun = 0, bulan = 0, urut = 0;
+        if (noTask) {
+            const bagian = String(noTask).split('-');
+            if (bagian.length >= 3) {
+                const t = parseInt(bagian[bagian.length - 3]);
+                const b = parseInt(bagian[bagian.length - 2]);
+                const u = parseInt(bagian[bagian.length - 1]);
+                if (!isNaN(t)) tahun = t;
+                if (!isNaN(b)) bulan = b;
+                if (!isNaN(u)) urut = u;
+            }
+        }
+        return { tahun, bulan, urut };
+    }
+
     function loadJadwal() {
         fetch('/api/jadwal')
             .then(res => res.json())
             .then(data => {
+                // Urutkan berdasarkan No Task (tahun-bulan-urut) terbaru/terbesar di atas
+                data = [...data].sort((a, b) => {
+                    const pa = parseNoTask(a.no_task);
+                    const pb = parseNoTask(b.no_task);
+                    if (pb.tahun !== pa.tahun) return pb.tahun - pa.tahun;
+                    if (pb.bulan !== pa.bulan) return pb.bulan - pa.bulan;
+                    return pb.urut - pa.urut;
+                });
                 dataJadwalGlobal = data; 
                 let html = '';
                 let hariIni = new Date();
@@ -492,20 +517,10 @@
 
         // Pecah no_task yang ada (mendukung format lama "PM-2026-09-001" maupun format baru "2026-09-001")
         const now = new Date();
-        let tahunTerdeteksi = now.getFullYear();
-        let bulanTerdeteksi = String(now.getMonth() + 1).padStart(2, '0');
-        let urutTerdeteksi = 1;
-        if (item.no_task) {
-            const bagian = item.no_task.split('-');
-            if (bagian.length >= 3) {
-                const t = parseInt(bagian[bagian.length - 3]);
-                const b = bagian[bagian.length - 2];
-                const u = parseInt(bagian[bagian.length - 1]);
-                if (!isNaN(t)) tahunTerdeteksi = t;
-                if (b) bulanTerdeteksi = b.padStart(2, '0');
-                if (!isNaN(u)) urutTerdeteksi = u;
-            }
-        }
+        const parsed = parseNoTask(item.no_task);
+        const tahunTerdeteksi = parsed.tahun || now.getFullYear();
+        const bulanTerdeteksi = parsed.bulan ? String(parsed.bulan).padStart(2, '0') : String(now.getMonth() + 1).padStart(2, '0');
+        const urutTerdeteksi = parsed.urut || 1;
         isiPilihanTahunBulan('edit', tahunTerdeteksi, bulanTerdeteksi);
         document.getElementById('editUrutTask').value = urutTerdeteksi;
 
