@@ -232,7 +232,7 @@
     </div>
 </div>
 
-<!-- Modal Penjelasan Popup -->
+<!-- Modal Penjelasan Popup (Dinamis dari JS) -->
 <div class="modal fade" id="modalMTBFProfile" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -290,9 +290,6 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
-    // DEKLARASI ROLE DARI BACKEND
-    const currentUserRole = "{{ session.role | lower }}"; 
-
     let dbMasterProfil = [];
     let dbRiwayatGlobal = [];
     let mesinAktifSaatIni = "";
@@ -314,11 +311,22 @@
     }
 
     document.addEventListener("DOMContentLoaded", function() {
-        // PENGECEKAN HAK AKSES UNTUK TOMBOL EDIT VIA JAVASCRIPT
-        // Pengecekan dibuat 'lowercase' untuk menghindari error huruf kapital
+        // PENGECEKAN ROLE YANG LEBIH AKURAT
+        // Menggunakan trim() untuk membuang spasi kosong tidak sengaja dan toLowerCase() agar seragam
+        const currentUserRole = "{{ session.role }}".trim().toLowerCase();
+        
+        // Tampilkan role ke dalam console browser untuk debugging jika ada masalah
+        console.log("== DEBUG PM SYSTEM ==");
+        console.log("Sistem mendeteksi role Anda sebagai: '" + currentUserRole + "'");
+
         const allowedRoles = ['admin', 'preventive', 'perencanaan', 'perencaan', 'kasek_ppp'];
+        
+        // Cek jika role saat ini ada di dalam array role yang diizinkan
         if (allowedRoles.includes(currentUserRole)) {
             document.getElementById('btnEditSpesifikasi').style.display = 'block';
+            console.log("Tombol Edit Spesifikasi: DIIZINKAN (DITAMPILKAN)");
+        } else {
+            console.log("Tombol Edit Spesifikasi: DITOLAK (DISEMBUNYIKAN)");
         }
 
         fetch('/api/riwayat').then(res => res.json()).then(data => { dbRiwayatGlobal = data; });
