@@ -98,7 +98,6 @@
                     <div class="card shadow-sm border-0 mb-3">
                         <div class="card-header bg-dark text-white fw-bold p-3 d-flex justify-content-between align-items-center">
                             <span><i class="fa-solid fa-clipboard-list"></i> Spesifikasi Teknis</span>
-                            <!-- Tombol disembunyikan secara default, dimunculkan via JS -->
                             <button id="btnEditSpesifikasi" class="btn btn-sm btn-outline-light py-0" style="display: none;" onclick="bukaModalEditSpec()">
                                 <i class="fa-solid fa-edit"></i> Edit
                             </button>
@@ -232,7 +231,6 @@
     </div>
 </div>
 
-<!-- Modal Penjelasan Popup (Dinamis dari JS) -->
 <div class="modal fade" id="modalMTBFProfile" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -290,43 +288,21 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
-    let dbMasterProfil = [];
-    let dbRiwayatGlobal = [];
-    let mesinAktifSaatIni = "";
-    let dataKesehatanGlobal = []; 
-    let chartTrenHealth = null;
-
-    function parseTanggalAman(strTanggal) {
-        if (!strTanggal) return new Date().toISOString().split('T')[0];
-        try {
-            let d = new Date(strTanggal);
-            if (isNaN(d.getTime())) return strTanggal.substring(0, 10);
-            let yy = d.getFullYear();
-            let mm = String(d.getMonth() + 1).padStart(2, '0');
-            let dd = String(d.getDate()).padStart(2, '0');
-            return `${yy}-${mm}-${dd}`;
-        } catch(e) {
-            return String(strTanggal).substring(0, 10);
-        }
-    }
-
     document.addEventListener("DOMContentLoaded", function() {
-        // PENGECEKAN ROLE YANG LEBIH AKURAT
-        // Menggunakan trim() untuk membuang spasi kosong tidak sengaja dan toLowerCase() agar seragam
-        const currentUserRole = "{{ session.role }}".trim().toLowerCase();
+        // AMBIL DATA ROLE & USERNAME DARI BACKEND JINJA2
+        const currentUserRole = "{{ session.role | default('') }}".trim().toLowerCase();
+        const currentUsername = "{{ session.username | default('') }}".trim().toLowerCase();
         
-        // Tampilkan role ke dalam console browser untuk debugging jika ada masalah
         console.log("== DEBUG PM SYSTEM ==");
-        console.log("Sistem mendeteksi role Anda sebagai: '" + currentUserRole + "'");
+        console.log("Role Anda: '" + currentUserRole + "'");
+        console.log("Username Anda: '" + currentUsername + "'");
 
-        const allowedRoles = ['admin', 'preventive', 'perencanaan', 'perencaan', 'kasek_ppp'];
+        // IZINKAN BERDASARKAN ROLE ATAU USERNAME
+        const allowedRoles = ['admin']; 
+        const allowedUsernames = ['preventive', 'perencanaan', 'perencaan', 'kasek_ppp'];
         
-        // Cek jika role saat ini ada di dalam array role yang diizinkan
-        if (allowedRoles.includes(currentUserRole)) {
+        if (allowedRoles.includes(currentUserRole) || allowedUsernames.includes(currentUsername)) {
             document.getElementById('btnEditSpesifikasi').style.display = 'block';
-            console.log("Tombol Edit Spesifikasi: DIIZINKAN (DITAMPILKAN)");
-        } else {
-            console.log("Tombol Edit Spesifikasi: DITOLAK (DISEMBUNYIKAN)");
         }
 
         fetch('/api/riwayat').then(res => res.json()).then(data => { dbRiwayatGlobal = data; });
@@ -349,6 +325,26 @@
             if(data.length > 0) $('#inputCariMesin').val(data[0].id_mesin).trigger('change');
         });
     });
+
+    let dbMasterProfil = [];
+    let dbRiwayatGlobal = [];
+    let mesinAktifSaatIni = "";
+    let dataKesehatanGlobal = []; 
+    let chartTrenHealth = null;
+
+    function parseTanggalAman(strTanggal) {
+        if (!strTanggal) return new Date().toISOString().split('T')[0];
+        try {
+            let d = new Date(strTanggal);
+            if (isNaN(d.getTime())) return strTanggal.substring(0, 10);
+            let yy = d.getFullYear();
+            let mm = String(d.getMonth() + 1).padStart(2, '0');
+            let dd = String(d.getDate()).padStart(2, '0');
+            return `${yy}-${mm}-${dd}`;
+        } catch(e) {
+            return String(strTanggal).substring(0, 10);
+        }
+    }
 
     function muatDataMesin() {
         const idTerpilih = document.getElementById('inputCariMesin').value;

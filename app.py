@@ -192,9 +192,14 @@ def get_master_mesin():
 
 @app.route('/api/master-mesin/<id_mesin>', methods=['PUT'])
 def update_master_mesin(id_mesin):
-    # 1. PERUBAHAN AKSES ROLE DI SINI
-    allowed_roles = ['Admin', 'preventive', 'perencaan', 'kasek_PPP']
-    if session.get('role') not in allowed_roles: 
+    # Cek Role dan Username (diubah menjadi huruf kecil semua agar aman)
+    user_role = session.get('role', '').lower()
+    username = session.get('username', '').lower()
+    
+    allowed_roles = ['admin']
+    allowed_usernames = ['preventive', 'perencanaan', 'perencaan', 'kasek_ppp']
+    
+    if user_role not in allowed_roles and username not in allowed_usernames: 
         return jsonify({"status": "error", "message": "Akses Ditolak!"}), 403
     
     data = request.json
