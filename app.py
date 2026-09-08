@@ -235,28 +235,32 @@ def handle_jadwal():
                 if 'loggedin' not in session: return jsonify({"error": "Belum login"}), 403
                 data = request.json
                 
-                # --- LOGIKA AUTO-GENERATE NO TASK ---
+                # --- LOGIKA AUTO-GENERATE NO TASK (Tahun & Bulan dipilih user, No urut otomatis) ---
                 now = datetime.datetime.now()
-                # Membuat Prefix: PM-Tahun-Bulan- (contoh: PM-2026-09-)
-                prefix = f"PM-{now.strftime('%Y-%m')}-" 
+                tahun_pilih = str(data.get('tahun_task') or now.year)
+                bulan_pilih = str(data.get('bulan_task') or now.month).zfill(2)
                 
-                # Cari no_task terakhir di DB yang memiliki prefix bulan dan tahun yang sama
-                cursor.execute("SELECT no_task FROM jadwal_pm WHERE no_task LIKE %s ORDER BY no_task DESC LIMIT 1", (prefix + '%',))
-                last_task = cursor.fetchone()
+                # Format: TAHUN-BULAN- (contoh: 2026-09-)
+                prefix = f"{tahun_pilih}-{bulan_pilih}-"
                 
-                if last_task and last_task['no_task']:
+                # Ambil semua no_task yang sudah ada untuk tahun & bulan yang sama
+                cursor.execute("SELECT no_task FROM jadwal_pm WHERE no_task LIKE %s", (prefix + '%',))
+                existing_tasks = cursor.fetchall()
+                
+                nomor_terpakai = set()
+                for row in existing_tasks:
                     try:
-                        # Ambil 3 angka terakhir, lalu tambahkan 1
-                        last_seq = int(last_task['no_task'].split('-')[-1])
-                        next_seq = last_seq + 1
-                    except ValueError:
-                        next_seq = 1
-                else:
-                    # Jika belum ada jadwal di bulan ini, mulai dari 1
-                    next_seq = 1
+                        nomor_terpakai.add(int(row['no_task'].split('-')[-1]))
+                    except (ValueError, AttributeError, TypeError):
+                        continue
+                
+                # Cari nomor urut terkecil yang belum dipakai (mengisi celah jika ada yang dihapus)
+                next_seq = 1
+                while next_seq in nomor_terpakai:
+                    next_seq += 1
                     
                 # Gabungkan prefix dengan nomor urut format 3 digit (001, 002, dst)
-                no_task_otomatis = f"{prefix}{next_seq:03d}" 
+                no_task_otomatis = f"{prefix}{next_seq:03d}"
                 # ------------------------------------
                 
                 sql = """INSERT INTO jadwal_pm (no_task, id_mesin, area, jenis_pekerjaan, tipe_pekerjaan, tgl_rencana, periode, status, dibuat_oleh) 
@@ -267,6 +271,7 @@ def handle_jadwal():
                 return jsonify({"status": "success", "message": f"Jadwal ditambah! No Task: {no_task_otomatis}"})
     finally:
         conn.close()
+
 
 
 @app.route('/api/jadwal/<int:id>/selesai', methods=['PUT'])
