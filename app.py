@@ -1,5 +1,6 @@
 import os
 import time
+import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, make_response
 from flask_cors import CORS
 import pymysql
@@ -192,9 +193,14 @@ def get_master_mesin():
 
 @app.route('/api/master-mesin/<id_mesin>', methods=['PUT'])
 def update_master_mesin(id_mesin):
-    # 1. PERUBAHAN AKSES ROLE DI SINI
-    allowed_roles = ['Admin', 'preventive', 'perencaan', 'kasek_PPP']
-    if session.get('role') not in allowed_roles: 
+    # Cek Role dan Username (diubah menjadi huruf kecil semua agar aman)
+    user_role = session.get('role', '').lower()
+    username = session.get('username', '').lower()
+    
+    allowed_roles = ['admin']
+    allowed_usernames = ['preventive', 'perencanaan', 'perencaan', 'kasek_ppp']
+    
+    if user_role not in allowed_roles and username not in allowed_usernames: 
         return jsonify({"status": "error", "message": "Akses Ditolak!"}), 403
     
     data = request.json
@@ -224,17 +230,49 @@ def handle_jadwal():
             if request.method == 'GET':
                 cursor.execute("SELECT * FROM jadwal_pm ORDER BY id DESC")
                 return jsonify(cursor.fetchall())
+            
             elif request.method == 'POST':
                 if 'loggedin' not in session: return jsonify({"error": "Belum login"}), 403
                 data = request.json
-                # Menambahkan tipe_pekerjaan ke kolom baru
+                
+                # --- LOGIKA AUTO-GENERATE NO TASK (Tahun & Bulan dipilih user, No urut otomatis) ---
+                now = datetime.datetime.now()
+                tahun_pilih = str(data.get('tahun_task') or now.year)
+                bulan_pilih = str(data.get('bulan_task') or now.month).zfill(2)
+                
+                # Format: TAHUN-BULAN- (contoh: 2026-09-)
+                prefix = f"{tahun_pilih}-{bulan_pilih}-"
+                
+                # Ambil semua no_task yang sudah ada untuk tahun & bulan yang sama
+                cursor.execute("SELECT no_task FROM jadwal_pm WHERE no_task LIKE %s", (prefix + '%',))
+                existing_tasks = cursor.fetchall()
+                
+                nomor_terpakai = set()
+                for row in existing_tasks:
+                    try:
+                        nomor_terpakai.add(int(row['no_task'].split('-')[-1]))
+                    except (ValueError, AttributeError, TypeError):
+                        continue
+                
+                # Cari nomor urut terkecil yang belum dipakai (mengisi celah jika ada yang dihapus)
+                next_seq = 1
+                while next_seq in nomor_terpakai:
+                    next_seq += 1
+                    
+                # Gabungkan prefix dengan nomor urut format 3 digit (001, 002, dst)
+                no_task_otomatis = f"{prefix}{next_seq:03d}"
+                # ------------------------------------
+                
                 sql = """INSERT INTO jadwal_pm (no_task, id_mesin, area, jenis_pekerjaan, tipe_pekerjaan, tgl_rencana, periode, status, dibuat_oleh) 
                          VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-                cursor.execute(sql, (data.get('no_task'), data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tipe_pekerjaan', 'Preventive'), data.get('tgl_rencana'), data.get('periode'), 'Scheduled', session['username']))
+                cursor.execute(sql, (no_task_otomatis, data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tipe_pekerjaan', 'Preventive'), data.get('tgl_rencana'), data.get('periode'), 'Scheduled', session['username']))
                 conn.commit()
-                return jsonify({"status": "success", "message": "Jadwal berhasil ditambahkan!"})
+                
+                return jsonify({"status": "success", "message": f"Jadwal ditambah! No Task: {no_task_otomatis}"})
     finally:
         conn.close()
+
+
 
 @app.route('/api/jadwal/<int:id>/selesai', methods=['PUT'])
 def selesaikan_jadwal(id):
@@ -271,6 +309,14 @@ def manage_jadwal(id):
         with conn.cursor() as cursor:
             if request.method == 'PUT':
                 data = request.json
+                
+                # Validasi: pastikan no_task (tahun-bulan-urut) tidak bentrok dengan jadwal lain
+                no_task_baru = data.get('no_task')
+                cursor.execute("SELECT id FROM jadwal_pm WHERE no_task=%s AND id!=%s", (no_task_baru, id))
+                bentrok = cursor.fetchone()
+                if bentrok:
+                    return jsonify({"status": "error", "message": f"No Task '{no_task_baru}' sudah dipakai jadwal lain. Silakan pilih nomor urut lain untuk tahun/bulan tersebut."}), 400
+                
                 # Menambahkan update untuk tipe_pekerjaan
                 sql = """UPDATE jadwal_pm SET no_task=%s, id_mesin=%s, area=%s, jenis_pekerjaan=%s, tipe_pekerjaan=%s, tgl_rencana=%s, periode=%s, status=%s WHERE id=%s"""
                 cursor.execute(sql, (data.get('no_task'), data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tipe_pekerjaan'), data.get('tgl_rencana'), data.get('periode'), data.get('status'), id))
