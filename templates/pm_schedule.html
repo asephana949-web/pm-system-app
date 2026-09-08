@@ -191,8 +191,13 @@
                     <input type="hidden" id="editId">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">No Task:</label>
-                            <input type="text" class="form-control form-control-sm bg-light" id="editNoTask" readonly>
+                            <label class="form-label fw-bold small">No Task (Tahun / Bulan / Urut):</label>
+                            <div class="d-flex gap-2">
+                                <select class="form-select form-select-sm" id="editTahunTask" style="max-width:90px;" required></select>
+                                <select class="form-select form-select-sm" id="editBulanTask" style="max-width:135px;" required></select>
+                                <input type="number" class="form-control form-control-sm" id="editUrutTask" min="1" max="999" style="max-width:75px;" required>
+                            </div>
+                            <small class="text-muted">Kombinasi tahun-bulan-urut harus unik.</small>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small">Area:</label>
@@ -484,7 +489,26 @@
         if(!item) return;
         
         document.getElementById('editId').value = item.id;
-        document.getElementById('editNoTask').value = item.no_task;
+
+        // Pecah no_task yang ada (mendukung format lama "PM-2026-09-001" maupun format baru "2026-09-001")
+        const now = new Date();
+        let tahunTerdeteksi = now.getFullYear();
+        let bulanTerdeteksi = String(now.getMonth() + 1).padStart(2, '0');
+        let urutTerdeteksi = 1;
+        if (item.no_task) {
+            const bagian = item.no_task.split('-');
+            if (bagian.length >= 3) {
+                const t = parseInt(bagian[bagian.length - 3]);
+                const b = bagian[bagian.length - 2];
+                const u = parseInt(bagian[bagian.length - 1]);
+                if (!isNaN(t)) tahunTerdeteksi = t;
+                if (b) bulanTerdeteksi = b.padStart(2, '0');
+                if (!isNaN(u)) urutTerdeteksi = u;
+            }
+        }
+        isiPilihanTahunBulan('edit', tahunTerdeteksi, bulanTerdeteksi);
+        document.getElementById('editUrutTask').value = urutTerdeteksi;
+
         document.getElementById('editArea').value = item.area;
         $('#editUnit').val(item.id_mesin).trigger('change');
         document.getElementById('editPekerjaan').value = item.jenis_pekerjaan;
@@ -502,8 +526,11 @@
 
     function simpanEditJadwal(event) {
         event.preventDefault();
+        const tahunPilih = document.getElementById('editTahunTask').value;
+        const bulanPilih = document.getElementById('editBulanTask').value;
+        const urutPilih = String(parseInt(document.getElementById('editUrutTask').value) || 1).padStart(3, '0');
         const dataInput = {
-            no_task: document.getElementById('editNoTask').value,
+            no_task: `${tahunPilih}-${bulanPilih}-${urutPilih}`,
             id_mesin: $('#editUnit').val(),
             area: document.getElementById('editArea').value,
             jenis_pekerjaan: document.getElementById('editPekerjaan').value,
@@ -532,7 +559,7 @@
             alert(res.message); 
             bootstrap.Modal.getInstance(document.getElementById('modalTambahJadwal')).hide(); 
             document.getElementById('formTambahPM').reset(); $('#tambahUnit').val('').trigger('change');
-            isiPilihanTahunBulanTask();
+            isiPilihanTahunBulan('tambah');
             loadJadwal(); 
         });
     }
@@ -560,35 +587,42 @@
         b.className = total === 0 ? "fw-bold mt-1 mb-0 text-muted" : (rate < 80 ? "fw-bold mt-1 mb-0 text-danger" : (rate < 95 ? "fw-bold mt-1 mb-0 text-warning" : "fw-bold mt-1 mb-0 text-success"));
     }
 
-    // Mengisi dropdown Tahun & Bulan untuk No Task (Tambah Rencana PM)
-    function isiPilihanTahunBulanTask() {
+    // Mengisi dropdown Tahun & Bulan untuk No Task (dipakai di Tambah & Edit).
+    // Rentang tahun otomatis mengikuti tahun berjalan (tidak perlu diubah manual tiap tahun).
+    function isiPilihanTahunBulan(prefix, tahunTerpilih, bulanTerpilih) {
         const namaBulan = ["01 - Januari", "02 - Februari", "03 - Maret", "04 - April", "05 - Mei", "06 - Juni", "07 - Juli", "08 - Agustus", "09 - September", "10 - Oktober", "11 - November", "12 - Desember"];
         const now = new Date();
         const tahunSekarang = now.getFullYear();
-        const bulanSekarang = now.getMonth() + 1;
+        const tahunDefault = tahunTerpilih || tahunSekarang;
+        const bulanDefault = bulanTerpilih || String(now.getMonth() + 1).padStart(2, '0');
 
-        const selectTahun = document.getElementById('tambahTahunTask');
+        // Rentang: tahun sekarang -1 s/d +2, tapi selalu mencakup tahunDefault (misal saat edit data lama)
+        const tahunMin = Math.min(tahunSekarang - 1, tahunDefault);
+        const tahunMax = Math.max(tahunSekarang + 2, tahunDefault);
+
+        const selectTahun = document.getElementById(prefix + 'TahunTask');
         selectTahun.innerHTML = '';
-        for (let t = tahunSekarang - 1; t <= tahunSekarang + 1; t++) {
+        for (let t = tahunMin; t <= tahunMax; t++) {
             const opt = document.createElement('option');
             opt.value = t; opt.textContent = t;
-            if (t === tahunSekarang) opt.selected = true;
+            if (t == tahunDefault) opt.selected = true;
             selectTahun.appendChild(opt);
         }
 
-        const selectBulan = document.getElementById('tambahBulanTask');
+        const selectBulan = document.getElementById(prefix + 'BulanTask');
         selectBulan.innerHTML = '';
         namaBulan.forEach((label, idx) => {
+            const val = String(idx + 1).padStart(2, '0');
             const opt = document.createElement('option');
-            opt.value = String(idx + 1).padStart(2, '0'); opt.textContent = label;
-            if (idx + 1 === bulanSekarang) opt.selected = true;
+            opt.value = val; opt.textContent = label;
+            if (val === bulanDefault) opt.selected = true;
             selectBulan.appendChild(opt);
         });
     }
 
     // PENTING: PROSES BERANTAI (CHAINING) UNTUK MENCEGAH NAMA MESIN HILANG SAAT REFRESH
     document.addEventListener("DOMContentLoaded", function() {
-        isiPilihanTahunBulanTask();
+        isiPilihanTahunBulan('tambah');
         fetch('/api/master-mesin')
         .then(res => res.json())
         .then(data => {

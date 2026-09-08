@@ -309,6 +309,14 @@ def manage_jadwal(id):
         with conn.cursor() as cursor:
             if request.method == 'PUT':
                 data = request.json
+                
+                # Validasi: pastikan no_task (tahun-bulan-urut) tidak bentrok dengan jadwal lain
+                no_task_baru = data.get('no_task')
+                cursor.execute("SELECT id FROM jadwal_pm WHERE no_task=%s AND id!=%s", (no_task_baru, id))
+                bentrok = cursor.fetchone()
+                if bentrok:
+                    return jsonify({"status": "error", "message": f"No Task '{no_task_baru}' sudah dipakai jadwal lain. Silakan pilih nomor urut lain untuk tahun/bulan tersebut."}), 400
+                
                 # Menambahkan update untuk tipe_pekerjaan
                 sql = """UPDATE jadwal_pm SET no_task=%s, id_mesin=%s, area=%s, jenis_pekerjaan=%s, tipe_pekerjaan=%s, tgl_rencana=%s, periode=%s, status=%s WHERE id=%s"""
                 cursor.execute(sql, (data.get('no_task'), data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tipe_pekerjaan'), data.get('tgl_rencana'), data.get('periode'), data.get('status'), id))
