@@ -344,6 +344,8 @@ def simpan_alasan_overdue(id):
             cursor.execute("UPDATE jadwal_pm SET alasan_overdue=%s WHERE id=%s", (alasan if alasan else None, id))
             conn.commit()
             return jsonify({"status": "success", "message": "Alasan keterlambatan tersimpan."})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Gagal menyimpan alasan. Kemungkinan kolom 'alasan_overdue' belum ada di tabel jadwal_pm. Detail: {str(e)}"}), 500
     finally:
         conn.close()
 
