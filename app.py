@@ -1,6 +1,7 @@
 import os
 import time
 import datetime
+import uuid
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, make_response
 from flask_cors import CORS
 import pymysql
@@ -76,6 +77,8 @@ def login():
                     session['loggedin'] = True
                     session['username'] = user['username']
                     session['role'] = user['role']
+                    # Token unik per login (dipakai frontend agar notifikasi overdue muncul ulang setiap login baru)
+                    session['login_token'] = str(uuid.uuid4())
                     return redirect(url_for('dashboard'))
                 else:
                     return render_template('login.html', error="Username atau Password salah!")
@@ -326,6 +329,22 @@ def manage_jadwal(id):
                 pesan = "Jadwal dihapus!"
             conn.commit()
             return jsonify({"status": "success", "message": pesan})
+    finally:
+        conn.close()
+
+@app.route('/api/jadwal/<int:id>/alasan-overdue', methods=['PUT'])
+def simpan_alasan_overdue(id):
+    if 'loggedin' not in session: return jsonify({"error": "Belum login"}), 403
+    data = request.json
+    alasan = data.get('alasan_overdue', '').strip()
+    if not alasan:
+        return jsonify({"status": "error", "message": "Alasan tidak boleh kosong."}), 400
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("UPDATE jadwal_pm SET alasan_overdue=%s WHERE id=%s", (alasan, id))
+            conn.commit()
+            return jsonify({"status": "success", "message": "Alasan keterlambatan tersimpan."})
     finally:
         conn.close()
 
