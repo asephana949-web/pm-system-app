@@ -332,6 +332,21 @@ def manage_jadwal(id):
     finally:
         conn.close()
 
+@app.route('/api/jadwal/<int:id>/alasan-overdue', methods=['PUT'])
+def simpan_alasan_overdue(id):
+    # Disimpan di database (bukan localStorage) agar bisa dibaca akun & komputer mana pun
+    if 'loggedin' not in session: return jsonify({"error": "Belum login"}), 403
+    data = request.json
+    alasan = (data.get('alasan_overdue') or '').strip()
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("UPDATE jadwal_pm SET alasan_overdue=%s WHERE id=%s", (alasan if alasan else None, id))
+            conn.commit()
+            return jsonify({"status": "success", "message": "Alasan keterlambatan tersimpan."})
+    finally:
+        conn.close()
+
 
 # ==========================================
 # API: RIWAYAT PERBAIKAN
