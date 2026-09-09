@@ -48,10 +48,10 @@
             </div>
 
             <div class="row mb-4">
-                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #2ecc71;"><span class="text-muted small fw-bold text-uppercase">PM Compliance Rate</span><h3 class="fw-bold mt-1 mb-0 text-success" id="valCompliance">0%</h3></div></div>
-                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #3498db;"><span class="text-muted small fw-bold text-uppercase">Total Rencana PM</span><h3 class="fw-bold mt-1 mb-0" id="valTotalJadwal">0</h3></div></div>
-                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #e74c3c;"><span class="text-muted small fw-bold text-uppercase">Terlambat (Overdue)</span><h3 class="fw-bold mt-1 mb-0 text-danger" id="valOverdue">0</h3></div></div>
-                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #f39c12;"><span class="text-muted small fw-bold text-uppercase">Selesai (Completed)</span><h3 class="fw-bold mt-1 mb-0 text-primary" id="valCompleted">0</h3></div></div>
+                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #2ecc71;"><span class="text-muted small fw-bold text-uppercase">PM Compliance Rate</span><h3 class="fw-bold mt-1 mb-0 text-success" id="valCompliance">0%</h3><a href="javascript:void(0)" class="small" onclick="tampilkanDetailKPI('compliance')"><i class="fa-solid fa-circle-info"></i> Lihat Detail</a></div></div>
+                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #3498db;"><span class="text-muted small fw-bold text-uppercase">Total Rencana PM</span><h3 class="fw-bold mt-1 mb-0" id="valTotalJadwal">0</h3><a href="javascript:void(0)" class="small" onclick="tampilkanDetailKPI('total')"><i class="fa-solid fa-circle-info"></i> Lihat Detail</a></div></div>
+                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #e74c3c;"><span class="text-muted small fw-bold text-uppercase">Terlambat (Overdue)</span><h3 class="fw-bold mt-1 mb-0 text-danger" id="valOverdue">0</h3><a href="javascript:void(0)" class="small" onclick="tampilkanDetailKPI('overdue')"><i class="fa-solid fa-circle-info"></i> Lihat Detail</a></div></div>
+                <div class="col-md-3"><div class="kpi-card" style="border-left-color: #f39c12;"><span class="text-muted small fw-bold text-uppercase">Selesai (Completed)</span><h3 class="fw-bold mt-1 mb-0 text-primary" id="valCompleted">0</h3><a href="javascript:void(0)" class="small" onclick="tampilkanDetailKPI('completed')"><i class="fa-solid fa-circle-info"></i> Lihat Detail</a></div></div>
             </div>
 
             <div class="card shadow-sm border-0 mb-4 p-3 bg-white">
@@ -316,6 +316,18 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalDetailKPI" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="detailKPITitle">Detail</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailKPIBody" style="max-height: 400px; overflow-y: auto;"></div>
+        </div>
+    </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
 
@@ -421,6 +433,11 @@
                         if(item.status === 'Overdue') badgeColor = "bg-danger";
                         if(item.status === 'Scheduled') badgeColor = "bg-primary";
 
+                        let iconAlasanOverdue = '';
+                        if (item.status === 'Overdue') {
+                            iconAlasanOverdue = ` <i class="fa-solid fa-circle-info text-danger" style="cursor:pointer;" title="Lihat alasan/penyebab keterlambatan" onclick="lihatAlasanOverdue(${item.id})"></i>`;
+                        }
+
                         let actionButtons = '';
                         if (item.status !== 'Completed') {
                             actionButtons += `<button class="btn btn-sm btn-success py-0 px-2 fw-bold" onclick="bukaModalSelesai(${item.id})" title="Selesai"><i class="fa-solid fa-check"></i></button>`;
@@ -446,7 +463,7 @@
                                 <td>${item.jenis_pekerjaan || '-'}</td>
                                 <td class="text-nowrap">${tglRencana}</td>
                                 <td>${item.periode || '-'}</td>
-                                <td><span class="badge ${badgeColor}">${item.status || 'Scheduled'}</span></td>
+                                <td><span class="badge ${badgeColor}">${item.status || 'Scheduled'}</span>${iconAlasanOverdue}</td>
                                 <td><strong>${item.dibuat_oleh || 'Sistem'}</strong></td>
                                 <td class="text-center text-nowrap">${actionButtons}</td>
                             </tr>
@@ -628,6 +645,12 @@
     // Muncul HANYA sekali per sesi login (dibedakan per username + login_token dari server).
     // Berpindah halaman/refresh dalam sesi login yang sama TIDAK memicu notif lagi.
     // Logout lalu login lagi (akun sama atau beda) akan membuat login_token baru -> notif muncul lagi.
+    // ================= NOTIFIKASI OVERDUE =================
+    // Muncul HANYA sekali per sesi login (dibedakan per username + login_token dari server).
+    // Berpindah halaman/refresh dalam sesi login yang sama TIDAK memicu notif lagi.
+    // Logout lalu login lagi (akun sama atau beda) akan membuat login_token baru -> notif muncul lagi.
+    // Alasan/penyebab disimpan di localStorage browser ini (tidak perlu kolom database baru),
+    // per-baris jadwal (key: alasanOverdue_<id>), dan bisa dilihat lagi lewat ikon (i) di kolom Status.
     function cekNotifikasiOverdue() {
         const KEY = 'pmOverdueNotifSesi';
         const penandaSesiIni = currentUsername + '::' + loginToken;
@@ -642,7 +665,7 @@
                 const d = new Date(item.tgl_rencana);
                 if (!isNaN(d) && d < hariIni) status = 'Overdue';
             }
-            return status === 'Overdue' && !item.alasan_overdue;
+            return status === 'Overdue' && !localStorage.getItem('alasanOverdue_' + item.id);
         });
 
         // Tandai sudah dicek untuk sesi login ini, terlepas ada overdue atau tidak,
@@ -653,10 +676,11 @@
 
         let html = '';
         daftarOverdue.forEach(item => {
+            let mesinMstr = dataMasterGlobal.find(m => m.id_mesin === item.id_mesin);
+            let namaTampil = mesinMstr ? mesinMstr.nama_mesin : (item.id_mesin || '-');
             html += `
                 <div class="border rounded p-2 mb-2">
-                    <div class="fw-bold small">${item.no_task || '-'} &mdash; ${item.id_mesin || '-'} <span class="text-muted">(${item.area || '-'})</span></div>
-                    <div class="text-muted small mb-1">Rencana: ${item.tgl_rencana || '-'} | ${item.jenis_pekerjaan || '-'}</div>
+                    <div class="fw-bold small">${namaTampil} - ${item.jenis_pekerjaan || '-'} - Target: ${item.tgl_rencana || '-'}</div>
                     <input type="text" class="form-control form-control-sm inputAlasanOverdue" data-id="${item.id}" placeholder="Alasan/penyebab keterlambatan...">
                 </div>`;
         });
@@ -672,20 +696,75 @@
 
     function simpanAlasanOverdue() {
         const inputs = document.querySelectorAll('.inputAlasanOverdue');
-        const daftarPermintaan = [];
+        let adaYangDiisi = false;
         inputs.forEach(inp => {
             const alasan = inp.value.trim();
             if (alasan) {
-                daftarPermintaan.push(
-                    fetch('/api/jadwal/' + inp.dataset.id + '/alasan-overdue', {
-                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ alasan_overdue: alasan })
-                    })
-                );
+                localStorage.setItem('alasanOverdue_' + inp.dataset.id, alasan);
+                adaYangDiisi = true;
             }
         });
-        if (daftarPermintaan.length === 0) { tutupNotifOverdue(); return; }
-        Promise.all(daftarPermintaan).then(() => { tutupNotifOverdue(); loadJadwal(); });
+        tutupNotifOverdue();
+        if (adaYangDiisi) loadJadwal();
+    }
+
+    // Menampilkan alasan/penyebab overdue yang tersimpan untuk satu baris jadwal (ikon (i) di kolom Status)
+    function lihatAlasanOverdue(id) {
+        const alasan = localStorage.getItem('alasanOverdue_' + id);
+        if (alasan) {
+            alert("Alasan/Penyebab Keterlambatan:\n\n" + alasan);
+        } else {
+            const isiBaru = prompt("Belum ada alasan/penyebab yang tercatat untuk jadwal ini. Isi sekarang:");
+            if (isiBaru && isiBaru.trim()) {
+                localStorage.setItem('alasanOverdue_' + id, isiBaru.trim());
+            }
+        }
+    }
+
+    // ================= DETAIL KPI =================
+    // Menampilkan rincian data (bukan cara hitung) di balik setiap angka KPI, mengikuti filter tabel yang sedang aktif.
+    function tampilkanDetailKPI(jenis) {
+        const baris = document.querySelectorAll('#tabelJadwalList tr[data-status]');
+        let judul = '';
+        let html = '';
+        let daftarItem = [];
+
+        baris.forEach(row => {
+            if (row.style.display === 'none') return;
+            const status = row.getAttribute('data-status');
+            const namaMesin = row.cells[2] ? row.cells[2].innerText : '-';
+            const jenisPekerjaan = row.cells[4] ? row.cells[4].innerText : '-';
+            daftarItem.push({ status, namaMesin, jenisPekerjaan });
+        });
+
+        if (jenis === 'total') {
+            judul = 'Detail Total Rencana PM';
+            daftarItem.forEach(d => { html += `<div class="border-bottom py-1 small">${d.namaMesin} - ${d.jenisPekerjaan} <span class="badge bg-secondary float-end">${d.status}</span></div>`; });
+        } else if (jenis === 'overdue') {
+            judul = 'Detail Jadwal Overdue';
+            const listOverdue = daftarItem.filter(d => d.status === 'Overdue');
+            if (listOverdue.length === 0) html = '<div class="text-muted small">Tidak ada jadwal overdue saat ini.</div>';
+            listOverdue.forEach(d => { html += `<div class="border-bottom py-1 small">${d.namaMesin} - ${d.jenisPekerjaan}</div>`; });
+        } else if (jenis === 'completed') {
+            judul = 'Detail Jadwal Selesai (Completed)';
+            const listCompleted = daftarItem.filter(d => d.status === 'Completed');
+            if (listCompleted.length === 0) html = '<div class="text-muted small">Belum ada jadwal yang selesai.</div>';
+            listCompleted.forEach(d => { html += `<div class="border-bottom py-1 small">${d.namaMesin} - ${d.jenisPekerjaan}</div>`; });
+        } else if (jenis === 'compliance') {
+            judul = 'Detail PM Compliance Rate';
+            const total = daftarItem.length;
+            const completed = daftarItem.filter(d => d.status === 'Completed').length;
+            const overdue = daftarItem.filter(d => d.status === 'Overdue').length;
+            const rate = total > 0 ? ((completed / total) * 100).toFixed(1) : 0;
+            html = `<div class="small mb-2">Total Rencana: <strong>${total}</strong></div>
+                    <div class="small mb-2">Selesai (Completed): <strong>${completed}</strong></div>
+                    <div class="small mb-2">Terlambat (Overdue): <strong>${overdue}</strong></div>
+                    <div class="small">Compliance Rate: <strong>${rate}%</strong> (Selesai / Total)</div>`;
+        }
+
+        document.getElementById('detailKPITitle').innerText = judul;
+        document.getElementById('detailKPIBody').innerHTML = html;
+        new bootstrap.Modal(document.getElementById('modalDetailKPI')).show();
     }
 
     // Mengisi dropdown Tahun & Bulan untuk No Task (dipakai di Tambah & Edit).
