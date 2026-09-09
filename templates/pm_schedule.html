@@ -45,6 +45,9 @@
                     <small class="text-muted">Pantau kepatuhan jadwal PM, filter dinamis, dan riwayat penundaan tugas.</small>
                 </div>
                 <div>
+                    <button class="btn btn-outline-success btn-sm fw-bold py-2 me-2" onclick="exportJadwalExcel()">
+                        <i class="fa-solid fa-file-excel"></i> Export Excel
+                    </button>
                     <button class="btn btn-primary btn-sm fw-bold py-2" data-bs-toggle="modal" data-bs-target="#modalTambahJadwal">
                         <i class="fa-solid fa-plus"></i> Tambah Rencana PM
                     </button>
@@ -415,6 +418,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
     const userRole = "{{ session.role }}";
@@ -707,6 +711,35 @@
 
     function hapusJadwal(id) {
         if (confirm("Hapus jadwal ini permanen?")) { fetch('/api/jadwal/' + id, { method: 'DELETE' }).then(res => res.json()).then(res => { alert(res.message); loadJadwal(); }); }
+    }
+
+    // Export data yang sedang tampil (sesuai filter aktif) ke file Excel (.xlsx)
+    function exportJadwalExcel() {
+        const rows = document.querySelectorAll('#tabelJadwalList tr[data-status]');
+        const dataExport = [];
+        rows.forEach(row => {
+            if (row.style.display === 'none') return;
+            dataExport.push({
+                'No Task': row.cells[0].innerText,
+                'ID Mesin': row.cells[1].innerText,
+                'Nama Mesin': row.cells[2].innerText,
+                'Area': row.cells[3].innerText,
+                'Jenis Pekerjaan PM': row.cells[4].innerText,
+                'Tgl Rencana': row.cells[5].innerText,
+                'Periode': row.cells[6].innerText,
+                'Status': row.getAttribute('data-status'),
+                'Dibuat Oleh': row.cells[8].innerText
+            });
+        });
+
+        if (dataExport.length === 0) { alert("Tidak ada data untuk diexport (cek filter yang aktif)."); return; }
+
+        const ws = XLSX.utils.json_to_sheet(dataExport);
+        ws['!cols'] = [ {wch:14}, {wch:12}, {wch:22}, {wch:14}, {wch:30}, {wch:12}, {wch:10}, {wch:12}, {wch:14} ];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Jadwal PM");
+        const namaFile = `Jadwal_PM_${new Date().toISOString().slice(0,10)}.xlsx`;
+        XLSX.writeFile(wb, namaFile);
     }
 
     function hitungStatistikDanCompliance() {
