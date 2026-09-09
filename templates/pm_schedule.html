@@ -781,7 +781,7 @@
                 const d = new Date(item.tgl_rencana);
                 if (!isNaN(d) && d < hariIni) status = 'Overdue';
             }
-            return status === 'Overdue' && !item.alasan_overdue;
+            return status === 'Overdue';
         });
 
         // Tandai sudah dicek untuk sesi login ini, terlepas ada overdue atau tidak,
@@ -802,7 +802,7 @@
                     <td class="small">${item.jenis_pekerjaan || '-'}</td>
                     <td class="text-danger fw-bold">${item.tgl_rencana || '-'}</td>
                     <td>
-                        <input type="text" class="form-control form-control-sm input-alasan-overdue" data-id="${item.id}" placeholder="Ketik alasan keterlambatan...">
+                        <input type="text" class="form-control form-control-sm input-alasan-overdue" data-id="${item.id}" value="${item.alasan_overdue ? item.alasan_overdue.replace(/"/g, '&quot;') : ''}" placeholder="Ketik alasan keterlambatan...">
                     </td>
                 </tr>`;
         });
