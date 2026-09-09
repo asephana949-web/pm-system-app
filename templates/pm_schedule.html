@@ -134,8 +134,12 @@
                 <form id="formTambahPM" onsubmit="tambahJadwalBaru(event)">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">No Task:</label>
-                            <input type="text" class="form-control form-control-sm" id="tambahNoTask" placeholder="Contoh: PM-2026-001" required>
+                            <label class="form-label fw-bold small">No Task (Tahun / Bulan):</label>
+                            <div class="d-flex gap-2">
+                                <select class="form-select form-select-sm" id="tambahTahunTask" required></select>
+                                <select class="form-select form-select-sm" id="tambahBulanTask" required></select>
+                            </div>
+                            <small class="text-muted">Nomor urut dibuat otomatis oleh sistem.</small>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small">Area:</label>
@@ -187,8 +191,13 @@
                     <input type="hidden" id="editId">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">No Task:</label>
-                            <input type="text" class="form-control form-control-sm" id="editNoTask" required>
+                            <label class="form-label fw-bold small">No Task (Tahun / Bulan / Urut):</label>
+                            <div class="d-flex gap-2">
+                                <select class="form-select form-select-sm" id="editTahunTask" style="max-width:90px;" required></select>
+                                <select class="form-select form-select-sm" id="editBulanTask" style="max-width:135px;" required></select>
+                                <input type="number" class="form-control form-control-sm" id="editUrutTask" min="1" max="999" style="max-width:75px;" required>
+                            </div>
+                            <small class="text-muted">Kombinasi tahun-bulan-urut harus unik.</small>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small">Area:</label>
@@ -289,12 +298,33 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalNotifOverdue" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-triangle-exclamation"></i> Jadwal PM Terlambat (Overdue)</h5>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-3">Terdapat jadwal PM yang melewati tanggal rencana. Mohon isi alasan/penyebab keterlambatan berikut (opsional, boleh dilewati):</p>
+                <div id="daftarOverdueNotif" class="mb-2" style="max-height: 350px; overflow-y: auto;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="tutupNotifOverdue()">Nanti Saja</button>
+                <button type="button" class="btn btn-danger btn-sm fw-bold" onclick="simpanAlasanOverdue()">Simpan Alasan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
     const userRole = "{{ session.role }}";
+    const currentUsername = "{{ session.username }}";
+    const loginToken = "{{ session.get('login_token', '') }}";
     let dataJadwalGlobal = []; 
     let dataMasterGlobal = [];
 
@@ -335,10 +365,35 @@
     }
 
     // FUNGSI MEMUAT JADWAL TABEL
+    // Helper: pecah no_task jadi {tahun, bulan, urut}. Mendukung format lama "PM-2026-09-001" & baru "2026-09-001".
+    function parseNoTask(noTask) {
+        let tahun = 0, bulan = 0, urut = 0;
+        if (noTask) {
+            const bagian = String(noTask).split('-');
+            if (bagian.length >= 3) {
+                const t = parseInt(bagian[bagian.length - 3]);
+                const b = parseInt(bagian[bagian.length - 2]);
+                const u = parseInt(bagian[bagian.length - 1]);
+                if (!isNaN(t)) tahun = t;
+                if (!isNaN(b)) bulan = b;
+                if (!isNaN(u)) urut = u;
+            }
+        }
+        return { tahun, bulan, urut };
+    }
+
     function loadJadwal() {
         fetch('/api/jadwal')
             .then(res => res.json())
             .then(data => {
+                // Urutkan berdasarkan No Task (tahun-bulan-urut) terbaru/terbesar di atas
+                data = [...data].sort((a, b) => {
+                    const pa = parseNoTask(a.no_task);
+                    const pb = parseNoTask(b.no_task);
+                    if (pb.tahun !== pa.tahun) return pb.tahun - pa.tahun;
+                    if (pb.bulan !== pa.bulan) return pb.bulan - pa.bulan;
+                    return pb.urut - pa.urut;
+                });
                 dataJadwalGlobal = data; 
                 let html = '';
                 let hariIni = new Date();
@@ -400,6 +455,7 @@
                 }
                 document.getElementById('tabelJadwalList').innerHTML = html;
                 hitungStatistikDanCompliance(); 
+                cekNotifikasiOverdue();
             });
     }
 
@@ -480,7 +536,16 @@
         if(!item) return;
         
         document.getElementById('editId').value = item.id;
-        document.getElementById('editNoTask').value = item.no_task;
+
+        // Pecah no_task yang ada (mendukung format lama "PM-2026-09-001" maupun format baru "2026-09-001")
+        const now = new Date();
+        const parsed = parseNoTask(item.no_task);
+        const tahunTerdeteksi = parsed.tahun || now.getFullYear();
+        const bulanTerdeteksi = parsed.bulan ? String(parsed.bulan).padStart(2, '0') : String(now.getMonth() + 1).padStart(2, '0');
+        const urutTerdeteksi = parsed.urut || 1;
+        isiPilihanTahunBulan('edit', tahunTerdeteksi, bulanTerdeteksi);
+        document.getElementById('editUrutTask').value = urutTerdeteksi;
+
         document.getElementById('editArea').value = item.area;
         $('#editUnit').val(item.id_mesin).trigger('change');
         document.getElementById('editPekerjaan').value = item.jenis_pekerjaan;
@@ -498,8 +563,11 @@
 
     function simpanEditJadwal(event) {
         event.preventDefault();
+        const tahunPilih = document.getElementById('editTahunTask').value;
+        const bulanPilih = document.getElementById('editBulanTask').value;
+        const urutPilih = String(parseInt(document.getElementById('editUrutTask').value) || 1).padStart(3, '0');
         const dataInput = {
-            no_task: document.getElementById('editNoTask').value,
+            no_task: `${tahunPilih}-${bulanPilih}-${urutPilih}`,
             id_mesin: $('#editUnit').val(),
             area: document.getElementById('editArea').value,
             jenis_pekerjaan: document.getElementById('editPekerjaan').value,
@@ -514,7 +582,8 @@
     function tambahJadwalBaru(event) {
         event.preventDefault();
         const dataInput = {
-            no_task: document.getElementById('tambahNoTask').value,
+            tahun_task: document.getElementById('tambahTahunTask').value,
+            bulan_task: document.getElementById('tambahBulanTask').value,
             id_mesin: $('#tambahUnit').val(),
             area: document.getElementById('tambahArea').value,
             jenis_pekerjaan: document.getElementById('tambahPekerjaan').value,
@@ -527,6 +596,7 @@
             alert(res.message); 
             bootstrap.Modal.getInstance(document.getElementById('modalTambahJadwal')).hide(); 
             document.getElementById('formTambahPM').reset(); $('#tambahUnit').val('').trigger('change');
+            isiPilihanTahunBulan('tambah');
             loadJadwal(); 
         });
     }
@@ -554,8 +624,106 @@
         b.className = total === 0 ? "fw-bold mt-1 mb-0 text-muted" : (rate < 80 ? "fw-bold mt-1 mb-0 text-danger" : (rate < 95 ? "fw-bold mt-1 mb-0 text-warning" : "fw-bold mt-1 mb-0 text-success"));
     }
 
+    // ================= NOTIFIKASI OVERDUE =================
+    // Muncul HANYA sekali per sesi login (dibedakan per username + login_token dari server).
+    // Berpindah halaman/refresh dalam sesi login yang sama TIDAK memicu notif lagi.
+    // Logout lalu login lagi (akun sama atau beda) akan membuat login_token baru -> notif muncul lagi.
+    function cekNotifikasiOverdue() {
+        const KEY = 'pmOverdueNotifSesi';
+        const penandaSesiIni = currentUsername + '::' + loginToken;
+
+        if (!loginToken) return; // jaga-jaga kalau session belum siap
+        if (sessionStorage.getItem(KEY) === penandaSesiIni) return; // sudah pernah muncul di sesi login ini
+
+        const hariIni = new Date(); hariIni.setHours(0, 0, 0, 0);
+        const daftarOverdue = dataJadwalGlobal.filter(item => {
+            let status = item.status;
+            if (status === 'Scheduled' && item.tgl_rencana) {
+                const d = new Date(item.tgl_rencana);
+                if (!isNaN(d) && d < hariIni) status = 'Overdue';
+            }
+            return status === 'Overdue' && !item.alasan_overdue;
+        });
+
+        // Tandai sudah dicek untuk sesi login ini, terlepas ada overdue atau tidak,
+        // supaya tidak muncul berulang tiap kali loadJadwal() dipanggil (misal karena filter/reload).
+        sessionStorage.setItem(KEY, penandaSesiIni);
+
+        if (daftarOverdue.length === 0) return;
+
+        let html = '';
+        daftarOverdue.forEach(item => {
+            html += `
+                <div class="border rounded p-2 mb-2">
+                    <div class="fw-bold small">${item.no_task || '-'} &mdash; ${item.id_mesin || '-'} <span class="text-muted">(${item.area || '-'})</span></div>
+                    <div class="text-muted small mb-1">Rencana: ${item.tgl_rencana || '-'} | ${item.jenis_pekerjaan || '-'}</div>
+                    <input type="text" class="form-control form-control-sm inputAlasanOverdue" data-id="${item.id}" placeholder="Alasan/penyebab keterlambatan...">
+                </div>`;
+        });
+        document.getElementById('daftarOverdueNotif').innerHTML = html;
+        new bootstrap.Modal(document.getElementById('modalNotifOverdue')).show();
+    }
+
+    function tutupNotifOverdue() {
+        const modalEl = document.getElementById('modalNotifOverdue');
+        const instance = bootstrap.Modal.getInstance(modalEl);
+        if (instance) instance.hide();
+    }
+
+    function simpanAlasanOverdue() {
+        const inputs = document.querySelectorAll('.inputAlasanOverdue');
+        const daftarPermintaan = [];
+        inputs.forEach(inp => {
+            const alasan = inp.value.trim();
+            if (alasan) {
+                daftarPermintaan.push(
+                    fetch('/api/jadwal/' + inp.dataset.id + '/alasan-overdue', {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ alasan_overdue: alasan })
+                    })
+                );
+            }
+        });
+        if (daftarPermintaan.length === 0) { tutupNotifOverdue(); return; }
+        Promise.all(daftarPermintaan).then(() => { tutupNotifOverdue(); loadJadwal(); });
+    }
+
+    // Mengisi dropdown Tahun & Bulan untuk No Task (dipakai di Tambah & Edit).
+    // Rentang tahun otomatis mengikuti tahun berjalan (tidak perlu diubah manual tiap tahun).
+    function isiPilihanTahunBulan(prefix, tahunTerpilih, bulanTerpilih) {
+        const namaBulan = ["01 - Januari", "02 - Februari", "03 - Maret", "04 - April", "05 - Mei", "06 - Juni", "07 - Juli", "08 - Agustus", "09 - September", "10 - Oktober", "11 - November", "12 - Desember"];
+        const now = new Date();
+        const tahunSekarang = now.getFullYear();
+        const tahunDefault = tahunTerpilih || tahunSekarang;
+        const bulanDefault = bulanTerpilih || String(now.getMonth() + 1).padStart(2, '0');
+
+        // Rentang: tahun sekarang -1 s/d +2, tapi selalu mencakup tahunDefault (misal saat edit data lama)
+        const tahunMin = Math.min(tahunSekarang - 1, tahunDefault);
+        const tahunMax = Math.max(tahunSekarang + 2, tahunDefault);
+
+        const selectTahun = document.getElementById(prefix + 'TahunTask');
+        selectTahun.innerHTML = '';
+        for (let t = tahunMin; t <= tahunMax; t++) {
+            const opt = document.createElement('option');
+            opt.value = t; opt.textContent = t;
+            if (t == tahunDefault) opt.selected = true;
+            selectTahun.appendChild(opt);
+        }
+
+        const selectBulan = document.getElementById(prefix + 'BulanTask');
+        selectBulan.innerHTML = '';
+        namaBulan.forEach((label, idx) => {
+            const val = String(idx + 1).padStart(2, '0');
+            const opt = document.createElement('option');
+            opt.value = val; opt.textContent = label;
+            if (val === bulanDefault) opt.selected = true;
+            selectBulan.appendChild(opt);
+        });
+    }
+
     // PENTING: PROSES BERANTAI (CHAINING) UNTUK MENCEGAH NAMA MESIN HILANG SAAT REFRESH
     document.addEventListener("DOMContentLoaded", function() {
+        isiPilihanTahunBulan('tambah');
         fetch('/api/master-mesin')
         .then(res => res.json())
         .then(data => {
