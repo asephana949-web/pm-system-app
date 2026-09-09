@@ -399,7 +399,7 @@
                 <div class="table-responsive" style="max-height: 400px;">
                     <table class="table table-sm table-bordered table-striped">
                         <thead class="table-light">
-                            <tr>
+                            <tr id="detailKPIHead">
                                 <th>No Task</th>
                                 <th>Unit Mesin</th>
                                 <th>Detail Pekerjaan PM</th>
@@ -546,7 +546,7 @@
                         }
 
                         html += `
-                            <tr data-status="${item.status || 'Scheduled'}" data-tgl="${tglRencana}" data-area="${(item.area || '').toLowerCase()}">
+                            <tr data-id="${item.id}" data-status="${item.status || 'Scheduled'}" data-tgl="${tglRencana}" data-area="${(item.area || '').toLowerCase()}">
                                 <td class="fw-bold">${item.no_task || '-'}</td>
                                 <td class="text-primary fw-bold text-nowrap">${item.id_mesin || '-'}</td>
                                 <td class="fw-bold">${namaTampil}</td> 
@@ -883,6 +883,7 @@
         let judul = '';
         let html = '';
         let jumlah = 0;
+        const tampilkanAlasan = (jenis === 'overdue');
 
         baris.forEach(row => {
             if (row.style.display === 'none') return;
@@ -896,15 +897,35 @@
             const cocok = (jenis === 'total') || (jenis === 'overdue' && status === 'Overdue') || (jenis === 'completed' && status === 'Completed');
             if (cocok) {
                 jumlah++;
+                let kolomAlasan = '';
+                if (tampilkanAlasan) {
+                    const idJadwal = parseInt(row.getAttribute('data-id'));
+                    const itemAsli = dataJadwalGlobal.find(x => x.id === idJadwal);
+                    const alasan = (itemAsli && itemAsli.alasan_overdue) ? itemAsli.alasan_overdue : '';
+                    kolomAlasan = alasan
+                        ? `<td class="small">${alasan}</td>`
+                        : `<td class="small text-muted fst-italic">Belum diisi</td>`;
+                }
                 html += `
                     <tr>
                         <td><span class="badge bg-secondary">${noTask}</span></td>
                         <td class="fw-bold">${namaMesin} <br><small class="text-muted fw-normal">${idMesin}</small></td>
                         <td class="small">${jenisPekerjaan}</td>
                         <td class="text-center text-nowrap">${tglRencana}</td>
+                        ${kolomAlasan}
                     </tr>`;
             }
         });
+
+        // Sesuaikan header tabel: kolom Alasan/Penyebab hanya untuk kategori Overdue
+        const headEl = document.getElementById('detailKPIHead');
+        headEl.innerHTML = `
+            <th>No Task</th>
+            <th>Unit Mesin</th>
+            <th>Detail Pekerjaan PM</th>
+            <th class="text-center">Tgl Rencana</th>
+            ${tampilkanAlasan ? '<th>Alasan / Penyebab Overdue</th>' : ''}
+        `;
 
         const h = document.getElementById('headerModalKPI');
         h.classList.remove('bg-primary', 'bg-danger', 'bg-success');
@@ -912,7 +933,7 @@
         else if (jenis === 'overdue') { judul = 'Rincian Pekerjaan Terlambat (Overdue)'; h.classList.add('bg-danger'); }
         else if (jenis === 'completed') { judul = 'Rincian Pekerjaan Selesai'; h.classList.add('bg-success'); }
 
-        if (jumlah === 0) html = `<tr><td colspan="4" class="text-center text-muted">Tidak ada data untuk kategori ini.</td></tr>`;
+        if (jumlah === 0) html = `<tr><td colspan="${tampilkanAlasan ? 5 : 4}" class="text-center text-muted">Tidak ada data untuk kategori ini.</td></tr>`;
 
         document.getElementById('detailKPITitle').innerHTML = `<i class="fa-solid fa-list"></i> ${judul} (${jumlah})`;
         document.getElementById('detailKPIBody').innerHTML = html;
