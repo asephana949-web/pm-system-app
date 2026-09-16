@@ -319,6 +319,19 @@
                             <input type="text" class="form-control form-control-sm" id="selesaiDurasi" required>
                         </div>
                     </div>
+                    <div class="row mt-2 border-top pt-3 bg-light rounded">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small text-danger"><i class="fa-solid fa-power-off"></i> Mengakibatkan Downtime Mesin Utama?</label>
+                            <select class="form-select form-select-sm border-danger text-danger fw-bold" id="selesaiIsDowntime" onchange="toggleInputDowntimeJam()">
+                                <option value="Tidak">Tidak (Mesin Tetap Jalan)</option>
+                                <option value="Ya">Ya (Mesin Utama Berhenti)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3" id="wrapperDowntimeJam" style="display:none;">
+                            <label class="form-label fw-bold small text-danger">Berapa Lama Downtime? (Jam):</label>
+                            <input type="number" step="0.1" class="form-control form-control-sm border-danger" id="selesaiDowntimeJam" value="0">
+                        </div>
+                    </div>
                     <div class="d-grid">
                         <button type="submit" class="btn btn-success btn-sm fw-bold">Kirim ke History</button>
                     </div>
@@ -618,7 +631,22 @@
         document.getElementById('selesaiUraian').value = item.jenis_pekerjaan; 
         document.getElementById('selesaiSparepart').value = "-";
         document.getElementById('selesaiDurasi').value = "1 Jam";
+        document.getElementById('selesaiIsDowntime').value = "Tidak";
+        document.getElementById('selesaiDowntimeJam').value = 0;
+        document.getElementById('wrapperDowntimeJam').style.display = 'none';
         new bootstrap.Modal(document.getElementById('modalSelesaiPM')).show();
+    }
+
+    // Tampilkan/Sembunyikan Kolom Downtime (sama seperti machine_history.html)
+    function toggleInputDowntimeJam() {
+        const val = document.getElementById('selesaiIsDowntime').value;
+        const div = document.getElementById('wrapperDowntimeJam');
+        if (val === 'Ya') {
+            div.style.display = 'block';
+        } else {
+            div.style.display = 'none';
+            document.getElementById('selesaiDowntimeJam').value = 0;
+        }
     }
 
     function simpanSelesaiDanHistory(event) {
@@ -630,7 +658,9 @@
             penyebab: document.getElementById('selesaiPenyebab').value,
             uraian: document.getElementById('selesaiUraian').value,
             sparepart: document.getElementById('selesaiSparepart').value,
-            durasi: document.getElementById('selesaiDurasi').value
+            durasi: document.getElementById('selesaiDurasi').value,
+            is_downtime: document.getElementById('selesaiIsDowntime').value,
+            downtime_jam: document.getElementById('selesaiDowntimeJam').value || 0
         };
         fetch('/api/jadwal/' + id + '/selesai', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataInput) })
         .then(res => res.json()).then(res => {
@@ -795,12 +825,17 @@
         daftarOverdue.forEach(item => {
             let mesinMstr = dataMasterGlobal.find(m => m.id_mesin === item.id_mesin);
             let namaTampil = mesinMstr ? mesinMstr.nama_mesin : (item.id_mesin || '-');
+            let tglTampil = '-';
+            if (item.tgl_rencana) {
+                let dTgl = new Date(item.tgl_rencana);
+                tglTampil = !isNaN(dTgl) ? `${dTgl.getFullYear()}-${String(dTgl.getMonth() + 1).padStart(2, '0')}-${String(dTgl.getDate()).padStart(2, '0')}` : item.tgl_rencana;
+            }
             html += `
                 <tr>
                     <td><span class="badge bg-secondary">${item.no_task || '-'}</span></td>
                     <td class="fw-bold">${namaTampil} <br><small class="text-muted fw-normal">${item.id_mesin || '-'}</small></td>
                     <td class="small">${item.jenis_pekerjaan || '-'}</td>
-                    <td class="text-danger fw-bold">${item.tgl_rencana || '-'}</td>
+                    <td class="text-danger fw-bold">${tglTampil}</td>
                     <td>
                         <input type="text" class="form-control form-control-sm input-alasan-overdue" data-id="${item.id}" value="${item.alasan_overdue ? item.alasan_overdue.replace(/"/g, '&quot;') : ''}" placeholder="Ketik alasan keterlambatan...">
                     </td>
