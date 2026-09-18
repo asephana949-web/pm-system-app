@@ -266,9 +266,9 @@ def handle_jadwal():
                 no_task_otomatis = f"{prefix}{next_seq:03d}"
                 # ------------------------------------
                 
-                sql = """INSERT INTO jadwal_pm (no_task, id_mesin, area, jenis_pekerjaan, tipe_pekerjaan, tgl_rencana, periode, status, dibuat_oleh) 
-                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-                cursor.execute(sql, (no_task_otomatis, data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tipe_pekerjaan', 'Preventive'), data.get('tgl_rencana'), data.get('periode'), 'Scheduled', session['username']))
+                sql = """INSERT INTO jadwal_pm (no_task, id_mesin, area, jenis_pekerjaan, tipe_pekerjaan, tgl_rencana, tgl_rencana_selesai, periode, status, dibuat_oleh) 
+                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+                cursor.execute(sql, (no_task_otomatis, data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tipe_pekerjaan', 'Preventive'), data.get('tgl_rencana'), data.get('tgl_rencana_selesai') or data.get('tgl_rencana'), data.get('periode'), 'Scheduled', session['username']))
                 conn.commit()
                 
                 return jsonify({"status": "success", "message": f"Jadwal ditambah! No Task: {no_task_otomatis}"})
@@ -320,9 +320,9 @@ def manage_jadwal(id):
                 if bentrok:
                     return jsonify({"status": "error", "message": f"No Task '{no_task_baru}' sudah dipakai jadwal lain. Silakan pilih nomor urut lain untuk tahun/bulan tersebut."}), 400
                 
-                # Menambahkan update untuk tipe_pekerjaan
-                sql = """UPDATE jadwal_pm SET no_task=%s, id_mesin=%s, area=%s, jenis_pekerjaan=%s, tipe_pekerjaan=%s, tgl_rencana=%s, periode=%s, status=%s WHERE id=%s"""
-                cursor.execute(sql, (data.get('no_task'), data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tipe_pekerjaan'), data.get('tgl_rencana'), data.get('periode'), data.get('status'), id))
+                # Menambahkan update untuk tipe_pekerjaan, rentang tgl rencana & realisasi
+                sql = """UPDATE jadwal_pm SET no_task=%s, id_mesin=%s, area=%s, jenis_pekerjaan=%s, tipe_pekerjaan=%s, tgl_rencana=%s, tgl_rencana_selesai=%s, tgl_realisasi_mulai=%s, tgl_realisasi_selesai=%s, periode=%s, status=%s WHERE id=%s"""
+                cursor.execute(sql, (data.get('no_task'), data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tipe_pekerjaan'), data.get('tgl_rencana'), data.get('tgl_rencana_selesai') or data.get('tgl_rencana'), data.get('tgl_realisasi_mulai') or None, data.get('tgl_realisasi_selesai') or None, data.get('periode'), data.get('status'), id))
                 pesan = "Data jadwal diubah!"
             elif request.method == 'DELETE':
                 cursor.execute("DELETE FROM jadwal_pm WHERE id = %s", (id,))

@@ -138,6 +138,7 @@
                                     <th>Area</th>
                                     <th>Jenis Pekerjaan PM</th>
                                     <th>Tgl Rencana</th>
+                                    <th>Realisasi Pekerjaan</th>
                                     <th>Periode</th>
                                     <th>Status</th>
                                     <th>Dibuat Oleh</th>
@@ -188,9 +189,16 @@
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Tanggal Rencana:</label>
-                            <input type="date" class="form-control form-control-sm" id="tambahTglRencana" required>
+                            <label class="form-label fw-bold small">Tgl Rencana (Dari):</label>
+                            <input type="date" class="form-control form-control-sm" id="tambahTglRencana" onchange="document.getElementById('tambahTglRencanaSelesai').min=this.value; if(!document.getElementById('tambahTglRencanaSelesai').value) document.getElementById('tambahTglRencanaSelesai').value=this.value;" required>
                         </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Tgl Rencana (Sampai):</label>
+                            <input type="date" class="form-control form-control-sm" id="tambahTglRencanaSelesai">
+                            <small class="text-muted">Kosongkan jika pekerjaan hanya 1 hari.</small>
+                        </div>
+                    </div>
+                    <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small">Periode (Siklus):</label>
                             <select class="form-select form-select-sm" id="tambahPeriode" required>
@@ -243,10 +251,26 @@
                         <textarea class="form-control form-control-sm" id="editPekerjaan" rows="2" required></textarea>
                     </div>
                     <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold small">Tanggal Rencana:</label>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Tgl Rencana (Dari):</label>
                             <input type="date" class="form-control form-control-sm" id="editTglRencana" required>
                         </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Tgl Rencana (Sampai):</label>
+                            <input type="date" class="form-control form-control-sm" id="editTglRencanaSelesai">
+                        </div>
+                    </div>
+                    <div class="row border-top pt-3 mt-1 bg-light rounded">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small text-primary">Realisasi Pekerjaan (Dari):</label>
+                            <input type="date" class="form-control form-control-sm" id="editTglRealisasiMulai">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small text-primary">Realisasi Pekerjaan (Sampai):</label>
+                            <input type="date" class="form-control form-control-sm" id="editTglRealisasiSelesai">
+                        </div>
+                    </div>
+                    <div class="row">
                         <div class="col-md-4 mb-3">
                             <label class="form-label fw-bold small">Periode (Siklus):</label>
                             <select class="form-select form-select-sm" id="editPeriode" required>
@@ -515,18 +539,39 @@
                 hariIni.setHours(0, 0, 0, 0);
 
                 if (data.length === 0) {
-                    html = `<tr><td colspan="10" class="text-center text-muted">Belum ada data jadwal PM</td></tr>`;
+                    html = `<tr><td colspan="11" class="text-center text-muted">Belum ada data jadwal PM</td></tr>`;
                 } else {
                     data.forEach(item => {
-                        let tglRencana = '-';
-                        let planDateObj = null;
-                        if (item.tgl_rencana) {
-                            planDateObj = new Date(item.tgl_rencana);
-                            if (!isNaN(planDateObj)) {
-                                tglRencana = `${planDateObj.getFullYear()}-${String(planDateObj.getMonth() + 1).padStart(2, '0')}-${String(planDateObj.getDate()).padStart(2, '0')}`;
-                            } else { tglRencana = item.tgl_rencana; }
+                        // Format tanggal bantu: Date object -> "YYYY-MM-DD", aman kalau tanggal invalid/kosong
+                        function fmtTgl(v) {
+                            if (!v) return null;
+                            const d = new Date(v);
+                            if (isNaN(d)) return null;
+                            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                         }
-                        
+
+                        const mulaiRencana = fmtTgl(item.tgl_rencana);
+                        const selesaiRencana = fmtTgl(item.tgl_rencana_selesai) || mulaiRencana;
+                        let tglRencana = '-';
+                        if (mulaiRencana) {
+                            tglRencana = (selesaiRencana && selesaiRencana !== mulaiRencana) ? `${mulaiRencana} s/d ${selesaiRencana}` : mulaiRencana;
+                        }
+
+                        const mulaiRealisasi = fmtTgl(item.tgl_realisasi_mulai);
+                        const selesaiRealisasi = fmtTgl(item.tgl_realisasi_selesai);
+                        let tglRealisasi = '<span class="text-muted">-</span>';
+                        if (mulaiRealisasi) {
+                            tglRealisasi = (selesaiRealisasi && selesaiRealisasi !== mulaiRealisasi) ? `${mulaiRealisasi} s/d ${selesaiRealisasi}` : mulaiRealisasi;
+                        }
+
+                        // Overdue ditentukan dari akhir rentang rencana (fallback ke tanggal mulai kalau akhir belum ada)
+                        let planDateObj = null;
+                        const batasAkhir = selesaiRencana || mulaiRencana;
+                        if (batasAkhir) {
+                            planDateObj = new Date(batasAkhir);
+                            if (isNaN(planDateObj)) planDateObj = null;
+                        }
+
                         if (item.status === 'Scheduled' && planDateObj !== null && planDateObj < hariIni) {
                             item.status = 'Overdue';
                         }
@@ -569,6 +614,7 @@
                                 <td><span class="badge bg-secondary">${item.area || '-'}</span></td>
                                 <td>${item.jenis_pekerjaan || '-'}</td>
                                 <td class="text-nowrap">${tglRencana}</td>
+                                <td class="text-nowrap">${tglRealisasi}</td>
                                 <td>${item.periode || '-'}</td>
                                 <td><span class="badge ${badgeColor}">${item.status || 'Scheduled'}${iconAlasanOverdue}</span></td>
                                 <td><strong>${item.dibuat_oleh || 'Sistem'}</strong></td>
@@ -697,6 +743,19 @@
             if (!isNaN(d)) tglHanyaTanggal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         }
         document.getElementById('editTglRencana').value = tglHanyaTanggal;
+
+        function isiTglInput(elId, val) {
+            let hasil = '';
+            if (val) {
+                let d = new Date(val);
+                if (!isNaN(d)) hasil = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            }
+            document.getElementById(elId).value = hasil;
+        }
+        isiTglInput('editTglRencanaSelesai', item.tgl_rencana_selesai);
+        isiTglInput('editTglRealisasiMulai', item.tgl_realisasi_mulai);
+        isiTglInput('editTglRealisasiSelesai', item.tgl_realisasi_selesai);
+
         document.getElementById('editPeriode').value = item.periode;
         document.getElementById('editStatus').value = item.status || 'Scheduled';
         new bootstrap.Modal(document.getElementById('modalEditJadwal')).show();
@@ -713,6 +772,9 @@
             area: document.getElementById('editArea').value,
             jenis_pekerjaan: document.getElementById('editPekerjaan').value,
             tgl_rencana: document.getElementById('editTglRencana').value,
+            tgl_rencana_selesai: document.getElementById('editTglRencanaSelesai').value,
+            tgl_realisasi_mulai: document.getElementById('editTglRealisasiMulai').value,
+            tgl_realisasi_selesai: document.getElementById('editTglRealisasiSelesai').value,
             periode: document.getElementById('editPeriode').value,
             status: document.getElementById('editStatus').value
         };
@@ -729,6 +791,7 @@
             area: document.getElementById('tambahArea').value,
             jenis_pekerjaan: document.getElementById('tambahPekerjaan').value,
             tgl_rencana: document.getElementById('tambahTglRencana').value,
+            tgl_rencana_selesai: document.getElementById('tambahTglRencanaSelesai').value,
             periode: document.getElementById('tambahPeriode').value,
             status: 'Scheduled' 
         };
@@ -737,6 +800,7 @@
             alert(res.message); 
             bootstrap.Modal.getInstance(document.getElementById('modalTambahJadwal')).hide(); 
             document.getElementById('formTambahPM').reset(); $('#tambahUnit').val('').trigger('change');
+            document.getElementById('tambahTglRencanaSelesai').value = '';
             isiPilihanTahunBulan('tambah');
             loadJadwal(); 
         });
@@ -759,16 +823,17 @@
                 'Area': row.cells[3].innerText,
                 'Jenis Pekerjaan PM': row.cells[4].innerText,
                 'Tgl Rencana': row.cells[5].innerText,
-                'Periode': row.cells[6].innerText,
+                'Realisasi Pekerjaan': row.cells[6].innerText,
+                'Periode': row.cells[7].innerText,
                 'Status': row.getAttribute('data-status'),
-                'Dibuat Oleh': row.cells[8].innerText
+                'Dibuat Oleh': row.cells[9].innerText
             });
         });
 
         if (dataExport.length === 0) { alert("Tidak ada data untuk diexport (cek filter yang aktif)."); return; }
 
         const ws = XLSX.utils.json_to_sheet(dataExport);
-        ws['!cols'] = [ {wch:14}, {wch:12}, {wch:22}, {wch:14}, {wch:30}, {wch:12}, {wch:10}, {wch:12}, {wch:14} ];
+        ws['!cols'] = [ {wch:14}, {wch:12}, {wch:22}, {wch:14}, {wch:30}, {wch:14}, {wch:20}, {wch:10}, {wch:12}, {wch:14} ];
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Jadwal PM");
         const namaFile = `Jadwal_PM_${new Date().toISOString().slice(0,10)}.xlsx`;
