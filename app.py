@@ -272,6 +272,8 @@ def handle_jadwal():
                 conn.commit()
                 
                 return jsonify({"status": "success", "message": f"Jadwal ditambah! No Task: {no_task_otomatis}"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Gagal menyimpan jadwal baru. Detail: {str(e)}"}), 500
     finally:
         conn.close()
 
@@ -321,14 +323,21 @@ def manage_jadwal(id):
                     return jsonify({"status": "error", "message": f"No Task '{no_task_baru}' sudah dipakai jadwal lain. Silakan pilih nomor urut lain untuk tahun/bulan tersebut."}), 400
                 
                 # Menambahkan update untuk tipe_pekerjaan, rentang tgl rencana & realisasi
+                # (Edit modal tidak punya field Tipe Pekerjaan -> fallback ke nilai lama/'Preventive' agar tidak NULL)
+                cursor.execute("SELECT tipe_pekerjaan FROM jadwal_pm WHERE id=%s", (id,))
+                row_lama = cursor.fetchone()
+                tipe_pekerjaan_final = data.get('tipe_pekerjaan') or (row_lama['tipe_pekerjaan'] if row_lama and row_lama.get('tipe_pekerjaan') else 'Preventive')
+
                 sql = """UPDATE jadwal_pm SET no_task=%s, id_mesin=%s, area=%s, jenis_pekerjaan=%s, tipe_pekerjaan=%s, tgl_rencana=%s, tgl_rencana_selesai=%s, tgl_realisasi_mulai=%s, tgl_realisasi_selesai=%s, periode=%s, status=%s WHERE id=%s"""
-                cursor.execute(sql, (data.get('no_task'), data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), data.get('tipe_pekerjaan'), data.get('tgl_rencana'), data.get('tgl_rencana_selesai') or data.get('tgl_rencana'), data.get('tgl_realisasi_mulai') or None, data.get('tgl_realisasi_selesai') or None, data.get('periode'), data.get('status'), id))
+                cursor.execute(sql, (data.get('no_task'), data.get('id_mesin'), data.get('area'), data.get('jenis_pekerjaan'), tipe_pekerjaan_final, data.get('tgl_rencana'), data.get('tgl_rencana_selesai') or data.get('tgl_rencana'), data.get('tgl_realisasi_mulai') or None, data.get('tgl_realisasi_selesai') or None, data.get('periode'), data.get('status'), id))
                 pesan = "Data jadwal diubah!"
             elif request.method == 'DELETE':
                 cursor.execute("DELETE FROM jadwal_pm WHERE id = %s", (id,))
                 pesan = "Jadwal dihapus!"
             conn.commit()
             return jsonify({"status": "success", "message": pesan})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Gagal menyimpan perubahan jadwal. Detail: {str(e)}"}), 500
     finally:
         conn.close()
 

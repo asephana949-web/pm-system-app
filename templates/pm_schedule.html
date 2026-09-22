@@ -779,7 +779,14 @@
             status: document.getElementById('editStatus').value
         };
         fetch('/api/jadwal/' + document.getElementById('editId').value, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataInput) })
-        .then(res => res.json()).then(res => { alert(res.message); bootstrap.Modal.getInstance(document.getElementById('modalEditJadwal')).hide(); loadJadwal(); });
+        .then(res => res.json()).then(res => {
+            alert(res.message);
+            if (res.status === 'success') {
+                bootstrap.Modal.getInstance(document.getElementById('modalEditJadwal')).hide();
+                loadJadwal();
+            }
+        })
+        .catch(err => alert("Gagal menyimpan perubahan. Server bermasalah atau koneksi terputus. (" + err.message + ")"));
     }
 
     function tambahJadwalBaru(event) {
@@ -798,12 +805,15 @@
         fetch('/api/jadwal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataInput) })
         .then(res => res.json()).then(res => { 
             alert(res.message); 
-            bootstrap.Modal.getInstance(document.getElementById('modalTambahJadwal')).hide(); 
-            document.getElementById('formTambahPM').reset(); $('#tambahUnit').val('').trigger('change');
-            document.getElementById('tambahTglRencanaSelesai').value = '';
-            isiPilihanTahunBulan('tambah');
-            loadJadwal(); 
-        });
+            if (res.status === 'success') {
+                bootstrap.Modal.getInstance(document.getElementById('modalTambahJadwal')).hide(); 
+                document.getElementById('formTambahPM').reset(); $('#tambahUnit').val('').trigger('change');
+                document.getElementById('tambahTglRencanaSelesai').value = '';
+                isiPilihanTahunBulan('tambah');
+                loadJadwal(); 
+            }
+        })
+        .catch(err => alert("Gagal menyimpan jadwal. Server bermasalah atau koneksi terputus. (" + err.message + ")"));
     }
 
     function hapusJadwal(id) {
