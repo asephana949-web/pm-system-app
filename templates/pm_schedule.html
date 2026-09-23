@@ -132,17 +132,12 @@
                         <table class="table table-hover table-striped m-0 align-middle">
                             <thead class="table-dark">
                                 <tr>
-                                    <th>No. Task</th>
-                                    <th>ID Mesin</th>
-                                    <th>Nama Mesin</th> 
-                                    <th>Area</th>
-                                    <th>Jenis Pekerjaan PM</th>
-                                    <th>Tgl Rencana</th>
-                                    <th>Realisasi Pekerjaan</th>
-                                    <th>Periode</th>
-                                    <th>Status</th>
-                                    <th>Dibuat Oleh</th>
-                                    <th class="text-center">Aksi</th>
+                                    <th width="12%">Task & Periode</th>
+                                    <th width="22%">Target Mesin</th>
+                                    <th width="25%">Jenis Pekerjaan PM</th>
+                                    <th width="18%">Rencana vs Realisasi</th>
+                                    <th width="10%">Status</th>
+                                    <th width="13%" class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="tabelJadwalList"></tbody>
@@ -539,7 +534,7 @@
                 hariIni.setHours(0, 0, 0, 0);
 
                 if (data.length === 0) {
-                    html = `<tr><td colspan="11" class="text-center text-muted">Belum ada data jadwal PM</td></tr>`;
+                    html = `<tr><td colspan="6" class="text-center text-muted">Belum ada data jadwal PM</td></tr>`;
                 } else {
                     data.forEach(item => {
                         // Format tanggal bantu: Date object -> "YYYY-MM-DD", aman kalau tanggal invalid/kosong
@@ -606,19 +601,47 @@
                             iconAlasanOverdue = ` <i class="fa-solid fa-circle-info ms-1 text-white" style="cursor:pointer;" onclick="bukaAlasanSatuan(${item.id}, '${namaMesinJs}', '${jenisPekerjaanJs}')" title="Klik untuk lihat/ubah alasan overdue${adaAlasan}"></i>`;
                         }
 
+                        // Gaya untuk memotong teks panjang (Jenis Pekerjaan) maksimal 2 baris
+                        const potongTeks = 'display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal;';
+
                         html += `
                             <tr data-id="${item.id}" data-status="${item.status || 'Scheduled'}" data-tgl="${tglRencana}" data-area="${(item.area || '').toLowerCase()}">
-                                <td class="fw-bold">${item.no_task || '-'}</td>
-                                <td class="text-primary fw-bold text-nowrap">${item.id_mesin || '-'}</td>
-                                <td class="fw-bold">${namaTampil}</td> 
-                                <td><span class="badge bg-secondary">${item.area || '-'}</span></td>
-                                <td>${item.jenis_pekerjaan || '-'}</td>
-                                <td class="text-nowrap">${tglRencana}</td>
-                                <td class="text-nowrap">${tglRealisasi}</td>
-                                <td>${item.periode || '-'}</td>
-                                <td><span class="badge ${badgeColor}">${item.status || 'Scheduled'}${iconAlasanOverdue}</span></td>
-                                <td><strong>${item.dibuat_oleh || 'Sistem'}</strong></td>
-                                <td class="text-center text-nowrap">${actionButtons}</td>
+                                
+                                <!-- Kolom 1: No Task & Periode -->
+                                <td>
+                                    <span class="fw-bold d-block">${item.no_task || '-'}</span>
+                                    <small class="text-muted"><i class="fa-solid fa-rotate pe-1"></i>${item.periode || '-'}</small>
+                                </td>
+                                
+                                <!-- Kolom 2: Nama Mesin, ID, dan Area -->
+                                <td>
+                                    <span class="fw-bold text-dark d-block">${namaTampil}</span>
+                                    <small class="text-primary fw-bold pe-2">${item.id_mesin || '-'}</small>
+                                    <span class="badge bg-secondary" style="font-size: 0.65em;">${item.area || '-'}</span>
+                                </td>
+                                
+                                <!-- Kolom 3: Jenis Pekerjaan (Truncated text) -->
+                                <td title="${item.jenis_pekerjaan || '-'}">
+                                    <span style="${potongTeks}" class="small">${item.jenis_pekerjaan || '-'}</span>
+                                </td>
+                                
+                                <!-- Kolom 4: Rencana vs Realisasi -->
+                                <td class="text-nowrap">
+                                    <div class="small fw-bold text-dark mb-1" title="Rencana"><i class="fa-regular fa-calendar pe-1 text-muted"></i> ${tglRencana}</div>
+                                    <div class="small text-muted" title="Realisasi"><i class="fa-solid fa-check pe-1"></i> ${tglRealisasi}</div>
+                                </td>
+                                
+                                <!-- Kolom 5: Status & Pembuat -->
+                                <td>
+                                    <span class="badge ${badgeColor} mb-1 d-inline-block">${item.status || 'Scheduled'}${iconAlasanOverdue}</span><br>
+                                    <small class="text-muted" style="font-size: 0.7em;">Oleh: ${item.dibuat_oleh || 'Sistem'}</small>
+                                </td>
+                                
+                                <!-- Kolom 6: Aksi -->
+                                <td class="text-center text-nowrap">
+                                    ${actionButtons}
+                                </td>
+                                
                             </tr>
                         `;
                     });
@@ -824,19 +847,39 @@
     function exportJadwalExcel() {
         const rows = document.querySelectorAll('#tabelJadwalList tr[data-status]');
         const dataExport = [];
+
+        function fmtTgl(v) {
+            if (!v) return null;
+            const d = new Date(v);
+            if (isNaN(d)) return null;
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
         rows.forEach(row => {
             if (row.style.display === 'none') return;
+            const idJadwal = parseInt(row.getAttribute('data-id'));
+            const item = dataJadwalGlobal.find(x => x.id === idJadwal);
+            if (!item) return;
+            const mesinMstr = dataMasterGlobal.find(m => m.id_mesin === item.id_mesin);
+
+            const mulaiRealisasi = fmtTgl(item.tgl_realisasi_mulai);
+            const selesaiRealisasi = fmtTgl(item.tgl_realisasi_selesai);
+            let realisasiTampil = '-';
+            if (mulaiRealisasi) {
+                realisasiTampil = (selesaiRealisasi && selesaiRealisasi !== mulaiRealisasi) ? `${mulaiRealisasi} s/d ${selesaiRealisasi}` : mulaiRealisasi;
+            }
+
             dataExport.push({
-                'No Task': row.cells[0].innerText,
-                'ID Mesin': row.cells[1].innerText,
-                'Nama Mesin': row.cells[2].innerText,
-                'Area': row.cells[3].innerText,
-                'Jenis Pekerjaan PM': row.cells[4].innerText,
-                'Tgl Rencana': row.cells[5].innerText,
-                'Realisasi Pekerjaan': row.cells[6].innerText,
-                'Periode': row.cells[7].innerText,
+                'No Task': item.no_task || '-',
+                'ID Mesin': item.id_mesin || '-',
+                'Nama Mesin': mesinMstr ? mesinMstr.nama_mesin : '-',
+                'Area': item.area || '-',
+                'Jenis Pekerjaan PM': item.jenis_pekerjaan || '-',
+                'Tgl Rencana': row.getAttribute('data-tgl') || '-',
+                'Realisasi Pekerjaan': realisasiTampil,
+                'Periode': item.periode || '-',
                 'Status': row.getAttribute('data-status'),
-                'Dibuat Oleh': row.cells[9].innerText
+                'Dibuat Oleh': item.dibuat_oleh || 'Sistem'
             });
         });
 
@@ -1001,20 +1044,22 @@
         baris.forEach(row => {
             if (row.style.display === 'none') return;
             const status = row.getAttribute('data-status');
-            const noTask = row.cells[0] ? row.cells[0].innerText : '-';
-            const idMesin = row.cells[1] ? row.cells[1].innerText : '-';
-            const namaMesin = row.cells[2] ? row.cells[2].innerText : '-';
-            const jenisPekerjaan = row.cells[4] ? row.cells[4].innerText : '-';
-            const tglRencana = row.cells[5] ? row.cells[5].innerText : '-';
+            const idJadwal = parseInt(row.getAttribute('data-id'));
+            const itemAsli = dataJadwalGlobal.find(x => x.id === idJadwal);
+            if (!itemAsli) return;
+            const mesinMstr = dataMasterGlobal.find(m => m.id_mesin === itemAsli.id_mesin);
+            const noTask = itemAsli.no_task || '-';
+            const idMesin = itemAsli.id_mesin || '-';
+            const namaMesin = mesinMstr ? mesinMstr.nama_mesin : '-';
+            const jenisPekerjaan = itemAsli.jenis_pekerjaan || '-';
+            const tglRencana = row.getAttribute('data-tgl') || '-';
 
             const cocok = (jenis === 'total') || (jenis === 'overdue' && status === 'Overdue') || (jenis === 'completed' && status === 'Completed');
             if (cocok) {
                 jumlah++;
                 let kolomAlasan = '';
                 if (tampilkanAlasan) {
-                    const idJadwal = parseInt(row.getAttribute('data-id'));
-                    const itemAsli = dataJadwalGlobal.find(x => x.id === idJadwal);
-                    const alasan = (itemAsli && itemAsli.alasan_overdue) ? itemAsli.alasan_overdue : '';
+                    const alasan = itemAsli.alasan_overdue || '';
                     kolomAlasan = alasan
                         ? `<td class="small">${alasan}</td>`
                         : `<td class="small text-muted fst-italic">Belum diisi</td>`;
