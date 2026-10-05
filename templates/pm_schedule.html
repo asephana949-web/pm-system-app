@@ -18,7 +18,19 @@
         .info-icon:hover { color: #2c3e50; transform: scale(1.1); }
         .info-icon-danger { color: #e74c3c; }
         .info-icon-danger:hover { color: #c0392b; }
-        .table-scrollable { max-height: 400px; overflow-y: auto; }
+        .table-scrollable { 
+            max-height: 650px; /* Diperbesar dari 400px agar muat +- 10 item/baris */
+            overflow-y: auto; 
+        }
+
+        /* Membekukan (freeze) kepala tabel saat di-scroll ke bawah */
+        .table-scrollable thead th { 
+            position: sticky; 
+            top: 0; 
+            z-index: 2; 
+            background-color: #212529; /* Menyamakan dengan warna class table-dark Bootstrap */
+            box-shadow: 0 2px 2px -1px rgba(0,0,0,0.4); /* Memberi garis batas bayangan yang tegas saat di-scroll */
+        }
         .select2-container .select2-selection--single { height: 32px; }
     </style>
 </head>
@@ -627,8 +639,12 @@
                                 
                                 <!-- Kolom 4: Rencana vs Realisasi -->
                                 <td class="text-nowrap">
-                                    <div class="small fw-bold text-dark mb-1" title="Rencana"><i class="fa-regular fa-calendar pe-1 text-muted"></i> ${tglRencana}</div>
-                                    <div class="small text-muted" title="Realisasi"><i class="fa-solid fa-check pe-1"></i> ${tglRealisasi}</div>
+                                    <div class="small fw-bold text-dark mb-1" title="Rencana">
+                                        <i class="fa-regular fa-calendar pe-1 text-muted"></i> ${tglRencana}
+                                    </div>
+                                    <div class="small text-success fw-bold" title="Realisasi">
+                                        <i class="fa-solid fa-check pe-1"></i> ${tglRealisasi}
+                                    </div>
                                 </td>
                                 
                                 <!-- Kolom 5: Status & Pembuat -->
