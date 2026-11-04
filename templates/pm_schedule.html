@@ -314,14 +314,19 @@
             <div class="modal-body">
                 <form id="formSelesaiPM" onsubmit="simpanSelesaiDanHistory(event)">
                     <input type="hidden" id="selesaiIdJadwal">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Alat / Mesin:</label>
-                            <input type="text" class="form-control form-control-sm bg-light" id="selesaiUnit" readonly>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Alat / Mesin:</label>
+                        <input type="text" class="form-control form-control-sm bg-light" id="selesaiUnit" readonly>
+                    </div>
+                    <div class="row border-bottom pb-2 mb-3">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label fw-bold small text-primary">Tgl Realisasi (Mulai):</label>
+                            <input type="date" class="form-control form-control-sm" id="selesaiTglMulai" onchange="document.getElementById('selesaiTglSelesai').min=this.value;" required>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Tgl Eksekusi Aktual:</label>
-                            <input type="date" class="form-control form-control-sm" id="selesaiTglEksekusi" required>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label fw-bold small text-primary">Tgl Realisasi (Sampai):</label>
+                            <input type="date" class="form-control form-control-sm" id="selesaiTglSelesai">
+                            <small class="text-muted" style="font-size: 0.7em;">Kosongkan jika selesai di hari yang sama.</small>
                         </div>
                     </div>
                     <div class="mb-3">
@@ -713,7 +718,9 @@
         let d = new Date();
         document.getElementById('selesaiIdJadwal').value = item.id;
         document.getElementById('selesaiUnit').value = item.id_mesin;
-        document.getElementById('selesaiTglEksekusi').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        // Set default tanggal mulai, kosongkan tanggal selesai
+        document.getElementById('selesaiTglMulai').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        document.getElementById('selesaiTglSelesai').value = "";
         document.getElementById('selesaiTipePekerjaan').value = "Preventive";
         document.getElementById('selesaiPenyebab').value = "Kondisi normal, pengecekan rutin berkala."; 
         document.getElementById('selesaiUraian').value = item.jenis_pekerjaan; 
@@ -741,7 +748,8 @@
         event.preventDefault();
         const id = document.getElementById('selesaiIdJadwal').value;
         const dataInput = {
-            tgl_eksekusi: document.getElementById('selesaiTglEksekusi').value,
+            tgl_realisasi_mulai: document.getElementById('selesaiTglMulai').value,
+            tgl_realisasi_selesai: document.getElementById('selesaiTglSelesai').value, // Kirim kedua tanggal
             tipe_pekerjaan: document.getElementById('selesaiTipePekerjaan').value,
             penyebab: document.getElementById('selesaiPenyebab').value,
             uraian: document.getElementById('selesaiUraian').value,
@@ -754,7 +762,8 @@
         .then(res => res.json()).then(res => {
             alert(res.message);
             if(res.status === 'success') { bootstrap.Modal.getInstance(document.getElementById('modalSelesaiPM')).hide(); loadJadwal(); }
-        });
+        })
+        .catch(err => alert("Gagal menyimpan. Server bermasalah atau koneksi terputus. (" + err.message + ")"));
     }
 
     function bukaModalEdit(id) {

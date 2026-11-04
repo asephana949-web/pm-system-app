@@ -102,18 +102,12 @@
                         <table class="table table-hover table-striped m-0 align-middle">
                             <thead class="table-dark">
                                 <tr>
-                                    <th>Tanggal</th>
-                                    <th>ID Mesin</th>
-                                    <th>Nama Mesin</th>
-                                    <th>Area</th>
-                                    <th>Tipe</th>
-                                    <th>Penyebab Kerusakan</th>
-                                    <th>Uraian Pekerjaan</th>
-                                    <th>Spare Part</th>
-                                    <th class="text-center">Total Durasi</th>
-                                    <th class="text-center">Downtime</th>
+                                    <th width="15%">Waktu Eksekusi</th>
+                                    <th width="22%">Target Mesin</th>
+                                    <th width="33%">Detail Perbaikan & Tindakan</th>
+                                    <th width="20%">Resource & Durasi</th>
                                     {% if session.role == 'Admin' %}
-                                    <th class="text-center">Aksi</th>
+                                    <th width="10%" class="text-center">Aksi</th>
                                     {% endif %}
                                 </tr>
                             </thead>
@@ -142,8 +136,13 @@
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Tanggal Pelaksanaan:</label>
-                            <input type="date" class="form-control form-control-sm" id="tambahTgl" required>
+                            <label class="form-label fw-bold small">Tgl Pelaksanaan (Mulai):</label>
+                            <input type="date" class="form-control form-control-sm" id="tambahTgl" onchange="document.getElementById('tambahTglSelesai').min=this.value;" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Tgl Pelaksanaan (Sampai):</label>
+                            <input type="date" class="form-control form-control-sm" id="tambahTglSelesai">
+                            <small class="text-muted" style="font-size: 0.7em;">Kosongkan jika selesai di hari yang sama.</small>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small">Tipe Pekerjaan:</label>
@@ -214,8 +213,13 @@
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Tanggal Pelaksanaan:</label>
-                            <input type="date" class="form-control form-control-sm" id="editTgl" required>
+                            <label class="form-label fw-bold small">Tgl Pelaksanaan (Mulai):</label>
+                            <input type="date" class="form-control form-control-sm" id="editTgl" onchange="document.getElementById('editTglSelesai').min=this.value;" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small">Tgl Pelaksanaan (Sampai):</label>
+                            <input type="date" class="form-control form-control-sm" id="editTglSelesai">
+                            <small class="text-muted" style="font-size: 0.7em;">Kosongkan jika selesai di hari yang sama.</small>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small">Tipe Pekerjaan:</label>
@@ -325,51 +329,77 @@
                 dataRiwayatGlobal = data; 
                 let html = '';
                 if (data.length === 0) {
-                    html = `<tr><td colspan="11" class="text-center text-muted">Belum ada riwayat perbaikan di database.</td></tr>`;
+                    html = `<tr><td colspan="5" class="text-center text-muted">Belum ada riwayat perbaikan di database.</td></tr>`;
                 } else {
                     data.forEach(item => {
                         let badgeClass = "bg-success";
                         if(item.tipe_pekerjaan === 'Corrective') badgeClass = "bg-danger";
                         if(item.tipe_pekerjaan === 'Overhaul') badgeClass = "bg-dark";
 
-                        let tglTampil = '-';
-                        if (item.tgl_eksekusi) {
-                            let d = new Date(item.tgl_eksekusi);
-                            if (!isNaN(d)) tglTampil = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                            else tglTampil = item.tgl_eksekusi; 
+                        // Format Tanggal Range
+                        let tglMulai = '-'; let tglSelesai = '-';
+                        if (item.tgl_eksekusi_mulai || item.tgl_eksekusi) {
+                            let d = new Date(item.tgl_eksekusi_mulai || item.tgl_eksekusi);
+                            if (!isNaN(d)) tglMulai = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                         }
+                        if (item.tgl_eksekusi_selesai) {
+                            let d = new Date(item.tgl_eksekusi_selesai);
+                            if (!isNaN(d)) tglSelesai = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                        }
+                        let tglTampil = tglMulai;
+                        if(tglSelesai !== '-' && tglSelesai !== tglMulai) { tglTampil = `${tglMulai} s/d <br>${tglSelesai}`; }
 
                         let actionButton = '';
                         if (userRole === 'Admin') {
                             actionButton = `
                                 <td class="text-center text-nowrap">
-                                    <button class="btn btn-sm btn-outline-warning py-0 px-2 me-1" onclick="bukaModalEdit(${item.id})" title="Edit Data"><i class="fa-solid fa-pen-to-square"></i></button>
-                                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="hapusRiwayat(${item.id})" title="Hapus Permanen"><i class="fa-solid fa-trash"></i></button>
+                                    <button class="btn btn-sm btn-info py-0 px-2 fw-bold text-white mb-1 w-100" onclick="bukaModalEdit(${item.id})" title="Edit Data"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                                    <br><button class="btn btn-sm btn-danger py-0 px-2 fw-bold w-100" onclick="hapusRiwayat(${item.id})" title="Hapus Permanen"><i class="fa-solid fa-trash"></i> Del</button>
                                 </td>
                             `;
                         }
 
-                        let mesinMstr = dataMasterGlobal.find(m => m.id_mesin === item.nama_alat); 
-                        let namaTampil = mesinMstr ? mesinMstr.nama_mesin : item.nama_alat;
+                        let mesinMstr = dataMasterGlobal.find(m => m.id_mesin === (item.nama_alat || item.id_mesin)); 
+                        let namaTampil = mesinMstr ? mesinMstr.nama_mesin : (item.nama_alat || '-');
                         let areaTampil = mesinMstr ? mesinMstr.area : '-';
                         
-                        // Menentukan Angka dan Warna Downtime
                         let durasiKerja = item.durasi_jam || '0';
                         let nilaiDowntime = (item.is_downtime === 'Ya') ? (item.downtime_jam || '0') : '0';
-                        let warnaDowntime = (item.is_downtime === 'Ya') ? 'bg-danger' : 'bg-success';
+                        let stylingDowntime = (item.is_downtime === 'Ya') ? 'text-danger fw-bold' : 'text-success';
+
+                        // Gaya pemotong teks
+                        const potongTeks = 'display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal;';
 
                         html += `
-                            <tr data-tipe="${item.tipe_pekerjaan}" data-tgl="${tglTampil}" data-area="${areaTampil.toLowerCase()}">
-                                <td class="fw-bold">${tglTampil}</td>
-                                <td class="text-primary fw-bold text-nowrap">${item.nama_alat}</td>
-                                <td class="fw-bold">${namaTampil}</td>
-                                <td><span class="badge bg-secondary">${areaTampil}</span></td>
-                                <td><span class="badge ${badgeClass}">${item.tipe_pekerjaan}</span></td>
-                                <td>${item.penyebab_kerusakan}</td>
-                                <td>${item.uraian_pekerjaan}</td>
-                                <td><span class="badge-sparepart"><i class="fa-solid fa-box text-warning"></i> ${item.sparepart_terpakai}</span></td>
-                                <td class="text-center"><span class="badge bg-secondary">${durasiKerja} Jam</span></td>
-                                <td class="text-center"><span class="badge ${warnaDowntime}">${nilaiDowntime} Jam</span></td>
+                            <tr data-id="${item.id}" data-tipe="${item.tipe_pekerjaan}" data-tgl="${tglMulai}" data-area="${areaTampil.toLowerCase()}">
+                                <!-- Kolom 1: Tanggal Eksekusi -->
+                                <td>
+                                    <div class="small fw-bold text-success mb-1" style="line-height: 1.4;"><i class="fa-regular fa-calendar-check pe-1 text-muted"></i> ${tglTampil}</div>
+                                </td>
+                                
+                                <!-- Kolom 2: Target Mesin -->
+                                <td>
+                                    <span class="fw-bold text-dark d-block">${namaTampil}</span>
+                                    <small class="text-primary fw-bold pe-2">${item.nama_alat || item.id_mesin || '-'}</small>
+                                    <span class="badge bg-secondary" style="font-size: 0.65em;">${areaTampil}</span>
+                                </td>
+                                
+                                <!-- Kolom 3: Detail Perbaikan -->
+                                <td>
+                                    <span class="badge ${badgeClass} mb-1">${item.tipe_pekerjaan}</span>
+                                    <div class="small text-muted mb-1" title="${item.penyebab_kerusakan}"><strong>Problem:</strong> ${item.penyebab_kerusakan}</div>
+                                    <div class="small fw-bold text-dark" title="${item.uraian_pekerjaan}" style="${potongTeks}">
+                                        Action: ${item.uraian_pekerjaan}
+                                    </div>
+                                </td>
+                                
+                                <!-- Kolom 4: Resources -->
+                                <td class="text-nowrap">
+                                    <div class="small mb-1"><i class="fa-solid fa-box text-warning pe-1"></i> Part: <span class="fw-bold">${item.sparepart_terpakai || '-'}</span></div>
+                                    <div class="small mb-1"><i class="fa-solid fa-stopwatch text-secondary pe-1"></i> Durasi: <span class="fw-bold">${durasiKerja} Jam</span></div>
+                                    <div class="small ${stylingDowntime}"><i class="fa-solid fa-power-off pe-1"></i> Downtime: <span>${nilaiDowntime} Jam</span></div>
+                                </td>
+                                
                                 ${actionButton}
                             </tr>
                         `;
@@ -420,6 +450,7 @@
         const dataInput = {
             alat: $('#tambahAlat').val(), 
             tgl: document.getElementById('tambahTgl').value,
+            tgl_selesai: document.getElementById('tambahTglSelesai').value,
             tipe: document.getElementById('tambahTipe').value,
             penyebab: document.getElementById('tambahPenyebab').value,
             uraian: document.getElementById('tambahUraian').value,
@@ -432,11 +463,14 @@
         fetch('/api/riwayat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataInput) })
         .then(res => res.json()).then(res => { 
             alert(res.message); 
+            if (res.status !== 'success') return;
             bootstrap.Modal.getInstance(document.getElementById('modalTambahRiwayat')).hide(); 
             document.getElementById('formTambah').reset(); $('#tambahAlat').val('').trigger('change');
+            document.getElementById('tambahTglSelesai').value = '';
             toggleDowntime('tambah');
             loadRiwayat(); 
-        });
+        })
+        .catch(err => alert("Gagal menyimpan. Server bermasalah atau koneksi terputus. (" + err.message + ")"));
     }
 
     function bukaModalEdit(id) {
@@ -450,6 +484,12 @@
         document.getElementById('editId').value = item.id;
         $('#editAlat').val(item.nama_alat).trigger('change');
         document.getElementById('editTgl').value = tglTampil;
+        let tglSelesaiEdit = '';
+        if (item.tgl_eksekusi_selesai) {
+            let d2 = new Date(item.tgl_eksekusi_selesai);
+            if (!isNaN(d2)) tglSelesaiEdit = `${d2.getFullYear()}-${String(d2.getMonth() + 1).padStart(2, '0')}-${String(d2.getDate()).padStart(2, '0')}`;
+        }
+        document.getElementById('editTglSelesai').value = tglSelesaiEdit;
         document.getElementById('editTipe').value = item.tipe_pekerjaan;
         document.getElementById('editPenyebab').value = item.penyebab_kerusakan;
         document.getElementById('editUraian').value = item.uraian_pekerjaan;
@@ -468,6 +508,7 @@
         const dataInput = {
             alat: $('#editAlat').val(), 
             tgl: document.getElementById('editTgl').value,
+            tgl_selesai: document.getElementById('editTglSelesai').value,
             tipe: document.getElementById('editTipe').value,
             penyebab: document.getElementById('editPenyebab').value,
             uraian: document.getElementById('editUraian').value,
@@ -479,9 +520,11 @@
         fetch('/api/riwayat/' + document.getElementById('editId').value, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataInput) })
         .then(res => res.json()).then(res => { 
             alert(res.message); 
+            if (res.status !== 'success') return;
             bootstrap.Modal.getInstance(document.getElementById('modalEditRiwayat')).hide(); 
             loadRiwayat(); 
-        });
+        })
+        .catch(err => alert("Gagal menyimpan perubahan. Server bermasalah atau koneksi terputus. (" + err.message + ")"));
     }
 
     function hapusRiwayat(id) {
@@ -505,30 +548,45 @@
         document.getElementById('statCorrective').innerText = corrective;
     }
 
-    // TAMBAHAN: FUNGSI EXPORT EXCEL
+    // TAMBAHAN: FUNGSI EXPORT EXCEL (diambil dari data, bukan salinan tabel, karena tabel kini memakai kolom gabungan)
     function exportToExcel() {
-        let tabelAsli = document.getElementById("tabelRiwayatList").closest("table");
-        let tabelClone = tabelAsli.cloneNode(true);
+        function fmtTgl(v) {
+            if (!v) return null;
+            const d = new Date(v);
+            if (isNaN(d)) return null;
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
 
-        // Menghapus kolom 'Aksi' (jika ada, hanya tampil untuk role Admin) agar tombol-tombol tidak ikut ter-export
-        let rows = tabelClone.querySelectorAll("tr");
-        rows.forEach(row => {
-            let cells = row.querySelectorAll("th, td");
-            if (cells.length > 0) {
-                let selTerakhir = cells[cells.length - 1];
-                if (selTerakhir.textContent.trim() === "Aksi" || selTerakhir.querySelector("button")) {
-                    row.removeChild(selTerakhir);
-                }
-            }
+        const dataExport = [];
+        document.querySelectorAll('#tabelRiwayatList tr[data-id]').forEach(row => {
+            if (row.style.display === 'none') return; // lewati baris yang terkena filter
+            const item = dataRiwayatGlobal.find(x => x.id === parseInt(row.getAttribute('data-id')));
+            if (!item) return;
+            const mesinMstr = dataMasterGlobal.find(m => m.id_mesin === item.nama_alat);
+            const mulai = fmtTgl(item.tgl_eksekusi);
+            const selesai = fmtTgl(item.tgl_eksekusi_selesai);
+            let tanggal = mulai || '-';
+            if (mulai && selesai && selesai !== mulai) tanggal = `${mulai} s/d ${selesai}`;
+            dataExport.push({
+                'Tanggal': tanggal,
+                'ID Mesin': item.nama_alat || '-',
+                'Nama Mesin': mesinMstr ? mesinMstr.nama_mesin : '-',
+                'Area': mesinMstr ? mesinMstr.area : '-',
+                'Tipe': item.tipe_pekerjaan || '-',
+                'Penyebab Kerusakan': item.penyebab_kerusakan || '-',
+                'Uraian Pekerjaan': item.uraian_pekerjaan || '-',
+                'Spare Part': item.sparepart_terpakai || '-',
+                'Total Durasi (Jam)': item.durasi_jam || 0,
+                'Downtime (Jam)': (item.is_downtime === 'Ya') ? (item.downtime_jam || 0) : 0
+            });
         });
 
-        // Membersihkan row yang terkena filter (display: none)
-        let tbody = tabelClone.querySelector("tbody");
-        let validRows = Array.from(tbody.querySelectorAll("tr")).filter(tr => tr.style.display !== 'none');
-        tbody.innerHTML = "";
-        validRows.forEach(tr => tbody.appendChild(tr));
+        if (dataExport.length === 0) { alert("Tidak ada data untuk diexport (cek filter yang aktif)."); return; }
 
-        let wb = XLSX.utils.table_to_book(tabelClone, {sheet: "Machine History"});
+        const ws = XLSX.utils.json_to_sheet(dataExport);
+        ws['!cols'] = [ {wch:24}, {wch:14}, {wch:24}, {wch:14}, {wch:12}, {wch:30}, {wch:36}, {wch:20}, {wch:14}, {wch:14} ];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Machine History");
         XLSX.writeFile(wb, "Data_Machine_History.xlsx");
     }
 

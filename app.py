@@ -289,7 +289,10 @@ def selesaikan_jadwal(id):
             cursor.execute("SELECT * FROM jadwal_pm WHERE id=%s", (id,))
             jadwal = cursor.fetchone()
             if not jadwal: return jsonify({"status": "error", "message": "Jadwal tidak ditemukan!"}), 404
-            cursor.execute("UPDATE jadwal_pm SET status='Completed' WHERE id=%s", (id,))
+            # Rentang tanggal realisasi (mulai wajib, sampai opsional). Fallback ke 'tgl_eksekusi' untuk kompatibilitas.
+            tgl_mulai = data.get('tgl_realisasi_mulai') or data.get('tgl_eksekusi')
+            tgl_selesai = data.get('tgl_realisasi_selesai') or None
+            cursor.execute("UPDATE jadwal_pm SET status='Completed', tgl_realisasi_mulai=%s, tgl_realisasi_selesai=%s WHERE id=%s", (tgl_mulai, tgl_selesai, id))
             
             is_dt = data.get('is_downtime', 'Tidak')
             dt_jam = data.get('downtime_jam', 0)
@@ -298,11 +301,13 @@ def selesaikan_jadwal(id):
             # Tipe pekerjaan dipilih user langsung di pop-up "Selesaikan Pekerjaan"
             tipe_pekerjaan_history = data.get('tipe_pekerjaan') if data.get('tipe_pekerjaan') else 'Preventive'
             
-            sql_history = """INSERT INTO riwayat_perbaikan (tgl_eksekusi, nama_alat, tipe_pekerjaan, penyebab_kerusakan, uraian_pekerjaan, sparepart_terpakai, durasi_jam, dibuat_oleh, is_downtime, downtime_jam) 
-                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-            cursor.execute(sql_history, (data.get('tgl_eksekusi'), jadwal['id_mesin'], tipe_pekerjaan_history, data.get('penyebab'), data.get('uraian'), data.get('sparepart'), data.get('durasi'), session['username'], is_dt, dt_jam))
+            sql_history = """INSERT INTO riwayat_perbaikan (tgl_eksekusi, tgl_eksekusi_selesai, nama_alat, tipe_pekerjaan, penyebab_kerusakan, uraian_pekerjaan, sparepart_terpakai, durasi_jam, dibuat_oleh, is_downtime, downtime_jam) 
+                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+            cursor.execute(sql_history, (tgl_mulai, tgl_selesai, jadwal['id_mesin'], tipe_pekerjaan_history, data.get('penyebab'), data.get('uraian'), data.get('sparepart'), data.get('durasi'), session['username'], is_dt, dt_jam))
             conn.commit()
             return jsonify({"status": "success", "message": "Pekerjaan selesai & masuk ke History!"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Gagal menyelesaikan pekerjaan. Detail: {str(e)}"}), 500
     finally:
         conn.close()
 
@@ -378,11 +383,13 @@ def manage_riwayat_all():
                 dt_jam = data.get('downtime_jam', 0)
                 if not dt_jam or str(dt_jam).strip() == '': dt_jam = 0
                     
-                sql = """INSERT INTO riwayat_perbaikan (tgl_eksekusi, nama_alat, tipe_pekerjaan, penyebab_kerusakan, uraian_pekerjaan, sparepart_terpakai, durasi_jam, dibuat_oleh, is_downtime, downtime_jam) 
-                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-                cursor.execute(sql, (data.get('tgl'), data.get('alat'), data.get('tipe'), data.get('penyebab'), data.get('uraian'), data.get('sparepart'), data.get('durasi'), session['username'], is_dt, dt_jam))
+                sql = """INSERT INTO riwayat_perbaikan (tgl_eksekusi, tgl_eksekusi_selesai, nama_alat, tipe_pekerjaan, penyebab_kerusakan, uraian_pekerjaan, sparepart_terpakai, durasi_jam, dibuat_oleh, is_downtime, downtime_jam) 
+                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+                cursor.execute(sql, (data.get('tgl'), data.get('tgl_selesai') or None, data.get('alat'), data.get('tipe'), data.get('penyebab'), data.get('uraian'), data.get('sparepart'), data.get('durasi'), session['username'], is_dt, dt_jam))
                 conn.commit()
                 return jsonify({"status": "success", "message": "Riwayat berhasil disimpan!"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Gagal menyimpan riwayat. Detail: {str(e)}"}), 500
     finally:
         conn.close()
 
@@ -398,14 +405,16 @@ def manage_riwayat_id(id):
                 dt_jam = data.get('downtime_jam', 0)
                 if not dt_jam or str(dt_jam).strip() == '': dt_jam = 0
                     
-                sql = """UPDATE riwayat_perbaikan SET tgl_eksekusi=%s, nama_alat=%s, tipe_pekerjaan=%s, penyebab_kerusakan=%s, uraian_pekerjaan=%s, sparepart_terpakai=%s, durasi_jam=%s, is_downtime=%s, downtime_jam=%s WHERE id=%s"""
-                cursor.execute(sql, (data.get('tgl'), data.get('alat'), data.get('tipe'), data.get('penyebab'), data.get('uraian'), data.get('sparepart'), data.get('durasi'), is_dt, dt_jam, id))
+                sql = """UPDATE riwayat_perbaikan SET tgl_eksekusi=%s, tgl_eksekusi_selesai=%s, nama_alat=%s, tipe_pekerjaan=%s, penyebab_kerusakan=%s, uraian_pekerjaan=%s, sparepart_terpakai=%s, durasi_jam=%s, is_downtime=%s, downtime_jam=%s WHERE id=%s"""
+                cursor.execute(sql, (data.get('tgl'), data.get('tgl_selesai') or None, data.get('alat'), data.get('tipe'), data.get('penyebab'), data.get('uraian'), data.get('sparepart'), data.get('durasi'), is_dt, dt_jam, id))
                 pesan = "Data riwayat diubah!"
             elif request.method == 'DELETE':
                 cursor.execute("DELETE FROM riwayat_perbaikan WHERE id = %s", (id,))
                 pesan = "Riwayat dihapus!"
             conn.commit()
             return jsonify({"status": "success", "message": pesan})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Gagal menyimpan perubahan riwayat. Detail: {str(e)}"}), 500
     finally:
         conn.close()
 
