@@ -29,6 +29,12 @@
         .document-link:hover { text-decoration: underline; }
         .iso-legend { display: flex; gap: 12px; font-size: 11px; font-weight: bold; }
         .box-color { width: 12px; height: 12px; display: inline-block; border-radius: 3px; }
+        /* Kolom FFT: bisa membesar saat mengetik */
+        .fft-area { resize: vertical; overflow: hidden; max-height: 320px; transition: height .12s ease; }
+        .chart-box { position: relative; height: 300px; }
+        /* Tabel penilaian per parameter (tampil di kotak gelap hasil AI & di modal detail) */
+        .tabel-zona th, .tabel-zona td { padding: 2px 6px; font-size: 12px; }
+        .ai-box .tabel-zona { --bs-table-color: #fff; --bs-table-bg: transparent; --bs-table-border-color: rgba(255,255,255,.25); color: #fff; }
     </style>
 </head>
 <body>
@@ -67,17 +73,37 @@
                     <div class="card shadow-sm border-0 h-100">
                         <div class="card-header bg-white fw-bold p-3 border-bottom"><i class="fa-solid fa-cloud-arrow-up text-primary"></i> Parameter Aktual & Bukti Lapangan</div>
                         <div class="card-body">
-                            <form id="formAnalisisGabungan">
-                                
-                                <div class="row mb-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-bold small">Vibrasi Overall (mm/s):</label>
-                                        <input type="number" step="any" class="form-control form-control-sm" id="inputVibrasi" placeholder="Misal: 4.8" required>
+                            <form id="formAnalisisGabungan" onsubmit="return false;">
+
+                                <!-- 3 NILAI UKUR: Velocity (ISO 10816-3), Acceleration, Demodulation -->
+                                <div class="row g-2 mb-3">
+                                    <div class="col-4">
+                                        <label class="form-label fw-bold small mb-1">Velocity <span class="text-muted fw-normal">(ISO 10816-3)</span></label>
+                                        <input type="number" step="any" min="0" class="form-control form-control-sm" id="inputVibrasi" placeholder="Misal: 4.8" required>
+                                        <select class="form-select form-select-sm mt-1" disabled><option>mm/s</option></select>
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-bold small">Gejala Spektrum (FFT):</label>
-                                        <input type="text" class="form-control form-control-sm" id="inputGejala" placeholder="Ketik gejala (misal: Ada puncak tinggi di 1X RPM)" required>
+                                    <div class="col-4">
+                                        <label class="form-label fw-bold small mb-1">Acceleration</label>
+                                        <input type="number" step="any" min="0" class="form-control form-control-sm" id="inputAcc" placeholder="Opsional">
+                                        <select class="form-select form-select-sm mt-1" id="satuanAcc" onchange="satuanBerubah()">
+                                            <option value="mg">mg</option>
+                                            <option value="mms2">mm/s²</option>
+                                        </select>
                                     </div>
+                                    <div class="col-4">
+                                        <label class="form-label fw-bold small mb-1">Demodulation</label>
+                                        <input type="number" step="any" min="0" class="form-control form-control-sm" id="inputDem" placeholder="Opsional">
+                                        <select class="form-select form-select-sm mt-1" id="satuanDem" onchange="satuanBerubah()">
+                                            <option value="mg">mg</option>
+                                            <option value="mms2">mm/s²</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- FFT: kolom otomatis membesar saat mengetik -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small">Gejala Spektrum (FFT):</label>
+                                    <textarea class="form-control form-control-sm fft-area" id="inputGejala" rows="1" placeholder="Ketik gejala (misal: Ada puncak tinggi di 1X RPM)" required oninput="autoGrowFFT(this)" onfocus="autoGrowFFT(this)" onblur="ciutkanFFT(this)"></textarea>
                                 </div>
 
                                 <div class="mb-3">
@@ -88,7 +114,79 @@
                                     <label class="form-label fw-bold small text-info"><i class="fa-solid fa-image"></i> Link Screenshot / Gambar (Opsional):</label>
                                     <input type="url" class="form-control form-control-sm" id="fileScreenshot" placeholder="https://drive.google.com/...">
                                 </div>
-                                
+
+                                <!-- STANDAR PENENTU ZONA -->
+                                <div class="border rounded p-2 mb-3 bg-light">
+                                    <div class="d-flex justify-content-between align-items-start gap-2">
+                                        <div class="small">
+                                            <i class="fa-solid fa-scale-balanced text-primary"></i> <b>Standar penentu zona:</b>
+                                            <span id="ringkasanStandar" class="fw-bold text-primary">-</span>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary py-0 text-nowrap" data-bs-toggle="collapse" data-bs-target="#panelStandar" aria-expanded="false">
+                                            <i class="fa-solid fa-sliders"></i> Atur
+                                        </button>
+                                    </div>
+                                    <div class="small mt-1" id="infoRpmMesin"></div>
+
+                                    <div class="collapse mt-2" id="panelStandar">
+                                        <label class="form-label fw-bold small mb-1">Acuan velocity (mm/s):</label>
+                                        <select class="form-select form-select-sm mb-2" id="presetStandar" onchange="pilihPresetStandar()">
+                                            <option value="g2r">ISO 10816-3 Grup 2 (15-300 kW) - Rigid [bawaan]</option>
+                                            <option value="g2f">ISO 10816-3 Grup 2 (15-300 kW) - Flexible</option>
+                                            <option value="g1r">ISO 10816-3 Grup 1 (&gt;300 kW) - Rigid</option>
+                                            <option value="g1f">ISO 10816-3 Grup 1 (&gt;300 kW) - Flexible</option>
+                                            <option value="custom">Custom (isi batas sendiri)</option>
+                                        </select>
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-6">
+                                                <label class="form-label small mb-0">Velocity: Waspada jika &gt; (mm/s)</label>
+                                                <input type="number" step="any" min="0" class="form-control form-control-sm" id="batasVelWaspada" oninput="batasBerubah(true)">
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label small mb-0 text-danger">Velocity: Bahaya jika &gt; (mm/s)</label>
+                                                <input type="number" step="any" min="0" class="form-control form-control-sm" id="batasVelBahaya" oninput="batasBerubah(true)">
+                                            </div>
+                                        </div>
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-6">
+                                                <label class="form-label small mb-0">Acceleration: Waspada &gt; (<span id="labelSatuanAcc">mg</span>)</label>
+                                                <input type="number" step="any" min="0" class="form-control form-control-sm" id="batasAccWaspada" placeholder="kosong = tidak dinilai" oninput="batasBerubah(false)">
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label small mb-0 text-danger">Acceleration: Bahaya &gt; (<span id="labelSatuanAcc2">mg</span>)</label>
+                                                <input type="number" step="any" min="0" class="form-control form-control-sm" id="batasAccBahaya" placeholder="kosong = tidak dinilai" oninput="batasBerubah(false)">
+                                            </div>
+                                        </div>
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-6">
+                                                <label class="form-label small mb-0">Demodulation: Waspada &gt; (<span id="labelSatuanDem">mg</span>)</label>
+                                                <input type="number" step="any" min="0" class="form-control form-control-sm" id="batasDemWaspada" placeholder="kosong = tidak dinilai" oninput="batasBerubah(false)">
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label small mb-0 text-danger">Demodulation: Bahaya &gt; (<span id="labelSatuanDem2">mg</span>)</label>
+                                                <input type="number" step="any" min="0" class="form-control form-control-sm" id="batasDemBahaya" placeholder="kosong = tidak dinilai" oninput="batasBerubah(false)">
+                                            </div>
+                                        </div>
+                                        <div class="form-text" style="font-size: 11px;">
+                                            <b>Velocity:</b> pilih kelas mesin sesuai ISO 10816-3, atau Custom untuk mesin RPM rendah / kasus khusus.<br>
+                                            <b>Acceleration &amp; Demodulation:</b> ISO 10816-3 tidak menetapkan batas zona untuk keduanya. Jika batas dikosongkan, nilainya tetap dicatat dan digrafikkan, tetapi tidak ikut menentukan zona. Saran awal: ukur baseline saat mesin sehat, lalu pakai sekitar 2&times; baseline sebagai Waspada dan 4&times; baseline sebagai Bahaya (aturan praktis, bukan standar &mdash; sesuaikan dengan pengalaman).<br>
+                                            Pengaturan ini diingat per unit hanya selama halaman terbuka.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- PENETAPAN ZONA AKHIR (bisa dipaksa manual) -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-danger"><i class="fa-solid fa-flag"></i> Penetapan Zona Akhir:</label>
+                                    <select class="form-select form-select-sm" id="zonaManual">
+                                        <option value="auto">Otomatis (ikuti standar di atas)</option>
+                                        <option value="Zone A/B (Aman)">Tetapkan manual: Zone A/B (Aman)</option>
+                                        <option value="Zone C (Waspada)">Tetapkan manual: Zone C (Waspada)</option>
+                                        <option value="Zone D (Berbahaya)">Tetapkan manual: Zone D (Berbahaya)</option>
+                                    </select>
+                                    <small class="text-muted" style="font-size: 11px;">Pakai bila kondisi lapangan lebih parah dari angka (mis. RPM rendah). Berlaku untuk Gemini AI maupun Mode Manual.</small>
+                                </div>
+
                                 <!-- DUAL BUTTON MODE -->
                                 <div class="d-flex gap-2 mt-3">
                                     <button type="button" class="btn btn-primary flex-grow-1 fw-bold" id="btnProsesAI" onclick="analisisDenganGemini()">
@@ -125,14 +223,50 @@
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-white p-3 d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom">
                     <h5 class="m-0 fw-bold" id="judulGrafikTren"><i class="fa-solid fa-chart-line text-primary"></i> Grafik Tren Vibrasi — Menunggu Data...</h5>
-                    <div class="iso-legend">
-                        <div><span class="box-color bg-success"></span> Aman (< 2.8)</div>
-                        <div><span class="box-color bg-warning"></span> Alarm (> 4.5)</div>
-                        <div><span class="box-color bg-danger"></span> Trip (> 7.1)</div>
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <!-- Pilih grafik yang ingin ditampilkan (1, 2, atau 3 sekaligus) -->
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Pilih grafik">
+                            <input type="checkbox" class="btn-check" id="cekGrafikVel" autocomplete="off" checked onchange="ubahPilihanGrafik(this)">
+                            <label class="btn btn-outline-primary fw-bold" for="cekGrafikVel">Velocity</label>
+                            <input type="checkbox" class="btn-check" id="cekGrafikAcc" autocomplete="off" checked onchange="ubahPilihanGrafik(this)">
+                            <label class="btn btn-outline-primary fw-bold" for="cekGrafikAcc">Acceleration</label>
+                            <input type="checkbox" class="btn-check" id="cekGrafikDem" autocomplete="off" checked onchange="ubahPilihanGrafik(this)">
+                            <label class="btn btn-outline-primary fw-bold" for="cekGrafikDem">Demodulation</label>
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <label class="small fw-bold m-0" for="satuanGrafik">Satuan Acc/Demod:</label>
+                            <select class="form-select form-select-sm" id="satuanGrafik" style="width: auto;" onchange="gambarSemuaGrafik()">
+                                <option value="mg">mg</option>
+                                <option value="mms2">mm/s²</option>
+                            </select>
+                        </div>
+                        <div class="iso-legend" id="legendGrafik"></div>
                     </div>
                 </div>
-                <div class="card-body" style="height: 320px;">
-                    <canvas id="chartTrendVibrasi"></canvas>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12 col-lg-4" id="kolomGrafikVel">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold small" id="judulChartVel">Velocity (mm/s)</span>
+                                <span class="small text-muted" id="infoGrafikVel"></span>
+                            </div>
+                            <div class="chart-box"><canvas id="chartVel"></canvas></div>
+                        </div>
+                        <div class="col-12 col-lg-4" id="kolomGrafikAcc">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold small" id="judulChartAcc">Acceleration (mg)</span>
+                                <span class="small text-muted" id="infoGrafikAcc"></span>
+                            </div>
+                            <div class="chart-box"><canvas id="chartAcc"></canvas></div>
+                        </div>
+                        <div class="col-12 col-lg-4" id="kolomGrafikDem">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold small" id="judulChartDem">Demodulation (mg)</span>
+                                <span class="small text-muted" id="infoGrafikDem"></span>
+                            </div>
+                            <div class="chart-box"><canvas id="chartDem"></canvas></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -150,6 +284,7 @@
                                             <th>Tanggal</th>
                                             <th>Unit Mesin</th>
                                             <th>Status ISO</th>
+                                            <th>Nilai Ukur</th>
                                             <th>Indikasi Kerusakan & Detail</th>
                                             <th>Lampiran Berkas</th>
                                             <th class="text-center">Aksi</th>
@@ -198,6 +333,15 @@
                 <div class="modal-body">
                     <input type="hidden" id="editID">
                     <div class="mb-3">
+                        <label class="form-label fw-bold text-danger small"><i class="fa-solid fa-flag"></i> Zona / Status ISO</label>
+                        <select class="form-select" id="editStatusIso">
+                            <option value="Zone A/B (Aman)">Zone A/B (Aman)</option>
+                            <option value="Zone C (Waspada)">Zone C (Waspada)</option>
+                            <option value="Zone D (Berbahaya)">Zone D (Berbahaya)</option>
+                        </select>
+                        <small class="text-muted">Ubah bila kondisi lapangan berbeda dari hasil analisis. Perubahan zona dicatat pada detail diagnosis.</small>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label fw-bold text-secondary small">Ringkasan Indikasi (Diagnosis)</label>
                         <textarea class="form-control" id="editIndikasi" rows="3" required></textarea>
                     </div>
@@ -223,9 +367,100 @@
 <script>
     let dbMaster = [];
     let dbLogsAI = [];
-    let chartTrend = null;
 
+    // ==========================================
+    // KONSTANTA & HELPER
+    // ==========================================
+    const FAKTOR_MG_KE_MMS2 = 9.80665; // 1 mg = 9.80665 mm/s²
+    const NAMA_ZONA = ['', 'Zone A/B (Aman)', 'Zone C (Waspada)', 'Zone D (Berbahaya)'];
+
+    // Batas velocity (mm/s RMS) menurut ISO 10816-3: [batas A/B -> C (Waspada), batas C -> D (Bahaya)]
+    const PRESET_STANDAR = {
+        g2r: { label: 'ISO 10816-3 Grup 2 - Rigid', w: 2.8, b: 4.5 },
+        g2f: { label: 'ISO 10816-3 Grup 2 - Flexible', w: 4.5, b: 7.1 },
+        g1r: { label: 'ISO 10816-3 Grup 1 - Rigid', w: 4.5, b: 7.1 },
+        g1f: { label: 'ISO 10816-3 Grup 1 - Flexible', w: 7.1, b: 11.0 },
+        custom: { label: 'Custom', w: null, b: null }
+    };
+    const PENGATURAN_DEFAULT = { preset: 'g2r', velW: 2.8, velB: 4.5, accW: '', accB: '', demW: '', demB: '', satuanAcc: 'mg', satuanDem: 'mg' };
+
+    let pengaturanPerUnit = {};      // ingatan pengaturan standar per unit (hanya selama halaman terbuka)
+    let unitPengaturanAktif = null;  // unit yang pengaturannya sedang tampil di panel
+    let unitGrafikAktif = null;
+    let logsGrafikAktif = [];
+    let chartInstances = { vel: null, acc: null, dem: null };
+
+    const KONFIG_GRAFIK = {
+        vel: { nama: 'Velocity',     canvas: 'chartVel', kolom: 'kolomGrafikVel', cek: 'cekGrafikVel', info: 'infoGrafikVel', judulEl: 'judulChartVel', warna: '#2980b9', bg: 'rgba(41, 128, 185, 0.1)', field: 'nilai_vibrasi' },
+        acc: { nama: 'Acceleration', canvas: 'chartAcc', kolom: 'kolomGrafikAcc', cek: 'cekGrafikAcc', info: 'infoGrafikAcc', judulEl: 'judulChartAcc', warna: '#8e44ad', bg: 'rgba(142, 68, 173, 0.1)', field: 'nilai_acceleration' },
+        dem: { nama: 'Demodulation', canvas: 'chartDem', kolom: 'kolomGrafikDem', cek: 'cekGrafikDem', info: 'infoGrafikDem', judulEl: 'judulChartDem', warna: '#16a085', bg: 'rgba(22, 160, 133, 0.1)', field: 'nilai_demodulation' }
+    };
+
+    function escapeHtml(t) {
+        return String(t === null || t === undefined ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function angkaAtauNull(v) {
+        if (v === null || v === undefined || String(v).trim() === '') return null;
+        const n = parseFloat(v);
+        return isNaN(n) ? null : n;
+    }
+    function keMg(nilai, satuan) { if (nilai === null) return null; return satuan === 'mms2' ? nilai / FAKTOR_MG_KE_MMS2 : nilai; }
+    function dariMg(nilaiMg, satuan) { if (nilaiMg === null) return null; return satuan === 'mms2' ? nilaiMg * FAKTOR_MG_KE_MMS2 : nilaiMg; }
+    function bulat(n, desimal) {
+        if (n === null || n === undefined) return null;
+        const f = Math.pow(10, desimal === undefined ? 3 : desimal);
+        return Math.round(n * f) / f;
+    }
+    function namaSatuan(kode) { return kode === 'mms2' ? 'mm/s²' : 'mg'; }
+
+    // RPM di master bisa berupa teks ("1450", "1.450", "1450/2900"); ambil angka pertama dengan aman
+    function parseRpm(teks) {
+        let t = String(teks === null || teks === undefined ? '' : teks).trim();
+        if (!t) return null;
+        if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g, '').replace(',', '.');
+        else t = t.replace(',', '.');
+        const n = parseFloat(t);
+        return isNaN(n) ? null : n;
+    }
+    function rpmMesinTeks(unitId) {
+        const m = dbMaster.find(x => x.id_mesin === unitId);
+        return (m && m.rpm !== null && m.rpm !== undefined) ? String(m.rpm).trim() : '';
+    }
+
+    // Sama dengan cara dashboard membaca status_iso
+    function zonaDariTeks(t) {
+        const s = String(t || '').toLowerCase();
+        if (s.includes('zone d') || s.includes('berbahaya')) return 3;
+        if (s.includes('zone c') || s.includes('waspada')) return 2;
+        return 1;
+    }
+    function infoZona(z) {
+        if (z === 3) return { border: 'border-danger', icon: 'fa-circle-xmark text-danger', badge: 'bg-danger' };
+        if (z === 2) return { border: 'border-warning', icon: 'fa-circle-exclamation text-warning', badge: 'bg-warning text-dark' };
+        return { border: 'border-success', icon: 'fa-circle-check text-success', badge: 'bg-success' };
+    }
+
+    // ==========================================
+    // KOLOM FFT: membesar otomatis saat mengetik
+    // ==========================================
+    function autoGrowFFT(el) {
+        el.style.height = 'auto';
+        const tinggiIsi = el.scrollHeight + 2;
+        const tinggiMin = (document.activeElement === el) ? 96 : 0; // saat diketik minimal ±4 baris
+        const tinggi = Math.min(Math.max(tinggiIsi, tinggiMin), 320);
+        el.style.height = tinggi + 'px';
+        el.style.overflowY = (tinggiIsi > 320) ? 'auto' : 'hidden';
+    }
+    function ciutkanFFT(el) {
+        if (!el.value.trim()) { el.style.height = ''; el.style.overflowY = 'hidden'; }
+        else autoGrowFFT(el); // ada isi: tetap tampil utuh, hanya pas dengan isinya
+    }
+
+    // ==========================================
+    // MUAT DATA
+    // ==========================================
     document.addEventListener("DOMContentLoaded", function() {
+        terapkanPengaturanStandar(PENGATURAN_DEFAULT);
         fetch('/api/master-mesin').then(res => res.json()).then(data => {
             dbMaster = data;
             let optGroups = {};
@@ -245,7 +480,8 @@
         });
     });
 
-    function muatDataLogAI(mesinDefault) {
+    // pertahankanHasil = true -> panel hasil analisis tidak di-reset (dipakai setelah simpan, agar hasil tetap terlihat)
+    function muatDataLogAI(mesinDefault, pertahankanHasil) {
         fetch('/api/ai-analysis')
             .then(res => res.json())
             .then(data => {
@@ -253,56 +489,213 @@
                 if(mesinDefault && !document.getElementById('pilihUnitAnalisis').value) {
                     $('#pilihUnitAnalisis').val(mesinDefault).trigger('change');
                 } else {
-                    gantiUnitAktif(); 
+                    gantiUnitAktif(pertahankanHasil);
                 }
             });
     }
 
-    function gantiUnitAktif() {
+    function gantiUnitAktif(pertahankanHasil) {
         const unitId = document.getElementById('pilihUnitAnalisis').value;
         if(!unitId) return;
-        
+
+        // Pengaturan standar: simpan milik unit sebelumnya, pulihkan milik unit ini (atau bawaan)
+        if (unitPengaturanAktif !== unitId) {
+            if (unitPengaturanAktif) pengaturanPerUnit[unitPengaturanAktif] = ambilPengaturanStandar();
+            terapkanPengaturanStandar(pengaturanPerUnit[unitId] || PENGATURAN_DEFAULT);
+            unitPengaturanAktif = unitId;
+        }
+        tampilkanInfoRpm(unitId);
+
         const logMesinIni = dbLogsAI.filter(x => x.id_mesin === unitId).sort((a,b) => new Date(a.tgl_analisis) - new Date(b.tgl_analisis));
-        
+
         renderGrafikTrenDariDatabase(unitId, logMesinIni);
         renderTabelDariDatabase(unitId, logMesinIni);
 
-        document.getElementById('badgeStatus').className = "badge bg-secondary";
-        document.getElementById('badgeStatus').innerText = "Siap Menganalisis";
-        document.getElementById('kontenHasilAi').innerHTML = `<p class="text-white-50">Silakan masukkan angka vibrasi aktual dan gejala FFT di samping. Gunakan <b>Gemini AI</b> untuk analisis dinamis, atau klik <b>Mode Manual</b> jika koneksi ke Google API sedang sibuk/gangguan.</p>`;
+        if (!pertahankanHasil) {
+            document.getElementById('badgeStatus').className = "badge bg-secondary";
+            document.getElementById('badgeStatus').innerText = "Siap Menganalisis";
+            document.getElementById('kontenHasilAi').innerHTML = `<p class="text-white-50">Silakan masukkan nilai vibrasi aktual (Velocity, Acceleration, Demodulation) dan gejala FFT di samping. Gunakan <b>Gemini AI</b> untuk analisis dinamis, atau klik <b>Mode Manual</b> jika koneksi ke Google API sedang sibuk/gangguan.</p>`;
+        }
     }
 
-    function renderGrafikTrenDariDatabase(unitId, logs) {
-        const ctx = document.getElementById('chartTrendVibrasi').getContext('2d');
-        if (chartTrend !== null) chartTrend.destroy();
-
-        let labels = [];
-        let values = [];
-        
-        if(logs.length === 0) {
-            let today = new Date().toISOString().split('T')[0];
-            labels = [today]; values = [0];
-        } else {
-            labels = logs.map(x => String(x.tgl_analisis).substring(0,10));
-            values = logs.map(x => x.nilai_vibrasi);
+    function tampilkanInfoRpm(unitId) {
+        const el = document.getElementById('infoRpmMesin');
+        const rpmTeks = rpmMesinTeks(unitId);
+        if (!rpmTeks) {
+            el.innerHTML = '<i class="fa-solid fa-gauge text-muted"></i> <span class="text-muted">RPM mesin belum tercatat di Machine Profile.</span>';
+            return;
         }
+        const rpm = parseRpm(rpmTeks);
+        let html = `<i class="fa-solid fa-gauge text-primary"></i> RPM mesin: <b>${escapeHtml(rpmTeks)}</b>`;
+        if (rpm !== null && rpm > 0 && rpm < 120) {
+            html += `<div class="text-danger fw-bold mt-1"><i class="fa-solid fa-triangle-exclamation"></i> RPM di bawah 120 (di luar cakupan ISO 10816-3). Velocity bisa tampak kecil walau kondisi parah &mdash; pertimbangkan batas Custom atau Penetapan Zona manual.</div>`;
+        } else if (rpm !== null && rpm > 15000) {
+            html += `<div class="text-danger fw-bold mt-1"><i class="fa-solid fa-triangle-exclamation"></i> RPM di atas 15.000 (di luar cakupan ISO 10816-3). Pertimbangkan batas Custom.</div>`;
+        }
+        el.innerHTML = html;
+    }
+
+    // ==========================================
+    // PENGATURAN STANDAR PENENTU ZONA
+    // ==========================================
+    function ambilPengaturanStandar() {
+        return {
+            preset: document.getElementById('presetStandar').value,
+            velW: document.getElementById('batasVelWaspada').value,
+            velB: document.getElementById('batasVelBahaya').value,
+            accW: document.getElementById('batasAccWaspada').value,
+            accB: document.getElementById('batasAccBahaya').value,
+            demW: document.getElementById('batasDemWaspada').value,
+            demB: document.getElementById('batasDemBahaya').value,
+            satuanAcc: document.getElementById('satuanAcc').value,
+            satuanDem: document.getElementById('satuanDem').value
+        };
+    }
+
+    function terapkanPengaturanStandar(p) {
+        document.getElementById('presetStandar').value = p.preset;
+        document.getElementById('batasVelWaspada').value = p.velW;
+        document.getElementById('batasVelBahaya').value = p.velB;
+        document.getElementById('batasAccWaspada').value = p.accW;
+        document.getElementById('batasAccBahaya').value = p.accB;
+        document.getElementById('batasDemWaspada').value = p.demW;
+        document.getElementById('batasDemBahaya').value = p.demB;
+        document.getElementById('satuanAcc').value = p.satuanAcc;
+        document.getElementById('satuanDem').value = p.satuanDem;
+        segarkanLabelSatuan();
+        perbaruiRingkasanStandar();
+    }
+
+    function segarkanLabelSatuan() {
+        const sa = namaSatuan(document.getElementById('satuanAcc').value);
+        const sd = namaSatuan(document.getElementById('satuanDem').value);
+        document.getElementById('labelSatuanAcc').innerText = sa;
+        document.getElementById('labelSatuanAcc2').innerText = sa;
+        document.getElementById('labelSatuanDem').innerText = sd;
+        document.getElementById('labelSatuanDem2').innerText = sd;
+    }
+
+    function satuanBerubah() {
+        segarkanLabelSatuan();
+        perbaruiRingkasanStandar();
+        gambarSemuaGrafik();
+    }
+
+    function pilihPresetStandar() {
+        const p = document.getElementById('presetStandar').value;
+        if (p !== 'custom') {
+            document.getElementById('batasVelWaspada').value = PRESET_STANDAR[p].w;
+            document.getElementById('batasVelBahaya').value = PRESET_STANDAR[p].b;
+        }
+        batasBerubah(false);
+    }
+
+    function batasBerubah(dariKetikVelocity) {
+        if (dariKetikVelocity) {
+            // Bila angka velocity diubah manual: cocokkan dengan preset, kalau tidak ada yang cocok -> Custom
+            const w = angkaAtauNull(document.getElementById('batasVelWaspada').value);
+            const b = angkaAtauNull(document.getElementById('batasVelBahaya').value);
+            const cocok = Object.keys(PRESET_STANDAR).find(k => k !== 'custom' && PRESET_STANDAR[k].w === w && PRESET_STANDAR[k].b === b);
+            document.getElementById('presetStandar').value = cocok || 'custom';
+        }
+        perbaruiRingkasanStandar();
+        gambarSemuaGrafik();
+    }
+
+    function perbaruiRingkasanStandar() {
+        const p = ambilPengaturanStandar();
+        const preset = PRESET_STANDAR[p.preset] || PRESET_STANDAR.custom;
+        let teks = `${preset.label}: Waspada > ${p.velW || '?'}, Bahaya > ${p.velB || '?'} mm/s`;
+        if (p.accW || p.accB) teks += ` | Acc: > ${p.accW || '-'} / > ${p.accB || '-'} ${namaSatuan(p.satuanAcc)}`;
+        if (p.demW || p.demB) teks += ` | Demod: > ${p.demW || '-'} / > ${p.demB || '-'} ${namaSatuan(p.satuanDem)}`;
+        document.getElementById('ringkasanStandar').innerText = teks;
+
+        document.getElementById('legendGrafik').innerHTML =
+            `<div><span class="box-color bg-success"></span> Aman (≤ ${escapeHtml(p.velW || '?')})</div>` +
+            `<div><span class="box-color bg-warning"></span> Waspada (> ${escapeHtml(p.velW || '?')})</div>` +
+            `<div><span class="box-color bg-danger"></span> Bahaya (> ${escapeHtml(p.velB || '?')})</div>` +
+            `<div class="text-muted fw-normal">(batas velocity, mm/s)</div>`;
+    }
+
+    // ==========================================
+    // GRAFIK TREN (Velocity / Acceleration / Demodulation)
+    // ==========================================
+    function renderGrafikTrenDariDatabase(unitId, logs) {
+        unitGrafikAktif = unitId;
+        logsGrafikAktif = logs;
 
         const mesinObj = dbMaster.find(x => x.id_mesin === unitId);
         const namaMesin = mesinObj ? mesinObj.nama_mesin : unitId;
-        document.getElementById('judulGrafikTren').innerHTML = `<i class="fa-solid fa-chart-line text-primary"></i> Grafik Tren Vibrasi — ${unitId} (${namaMesin})`;
+        document.getElementById('judulGrafikTren').innerHTML = `<i class="fa-solid fa-chart-line text-primary"></i> Grafik Tren Vibrasi — ${escapeHtml(unitId)} (${escapeHtml(namaMesin)})`;
 
-        chartTrend = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    { label: 'Velocity (mm/s)', data: values, borderColor: '#2980b9', backgroundColor: 'rgba(41, 128, 185, 0.1)', borderWidth: 3, pointBackgroundColor: '#2c3e50', pointRadius: 6, fill: true, tension: 0.3 },
-                    { label: 'Batas ALARM', data: Array(labels.length).fill(4.5), borderColor: '#f1c40f', borderWidth: 2, borderDash: [5, 5], pointRadius: 0 },
-                    { label: 'Batas TRIP', data: Array(labels.length).fill(7.1), borderColor: '#e74c3c', borderWidth: 2, borderDash: [5, 5], pointRadius: 0 }
-                ]
-            },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 14 } }, plugins: { legend: { position: 'bottom' } } }
+        gambarSemuaGrafik();
+    }
+
+    function gambarSemuaGrafik() {
+        if (unitGrafikAktif === null || typeof Chart === 'undefined') return;
+
+        const set = ambilPengaturanStandar();
+        const satuanGrafik = document.getElementById('satuanGrafik').value; // 'mg' | 'mms2'
+        const labelSatuan = namaSatuan(satuanGrafik);
+        const logs = logsGrafikAktif;
+
+        let labels = logs.map(x => String(x.tgl_analisis).substring(0, 10));
+        if (logs.length === 0) labels = [new Date().toISOString().split('T')[0]];
+
+        // Garis batas tiap grafik (dalam satuan yang sedang ditampilkan)
+        const garis = {
+            vel: { w: angkaAtauNull(set.velW), b: angkaAtauNull(set.velB) },
+            acc: { w: dariMg(keMg(angkaAtauNull(set.accW), set.satuanAcc), satuanGrafik), b: dariMg(keMg(angkaAtauNull(set.accB), set.satuanAcc), satuanGrafik) },
+            dem: { w: dariMg(keMg(angkaAtauNull(set.demW), set.satuanDem), satuanGrafik), b: dariMg(keMg(angkaAtauNull(set.demB), set.satuanDem), satuanGrafik) }
+        };
+
+        Object.keys(KONFIG_GRAFIK).forEach(k => {
+            const cfg = KONFIG_GRAFIK[k];
+            const satuanTeks = (k === 'vel') ? 'mm/s' : labelSatuan;
+            document.getElementById(cfg.judulEl).innerText = `${cfg.nama} (${satuanTeks})`;
+
+            const data = logs.length === 0 ? [null] : logs.map(x => {
+                let v = angkaAtauNull(x[cfg.field]);
+                if (k !== 'vel') v = dariMg(v, satuanGrafik); // nilai di database disimpan dalam mg
+                return bulat(v, 3);
+            });
+            const jumlahData = data.filter(v => v !== null).length;
+            document.getElementById(cfg.info).innerText = jumlahData === 0 ? 'Belum ada data' : `${jumlahData} data`;
+
+            const g = garis[k];
+            const dataset = [{ label: `${cfg.nama} (${satuanTeks})`, data: data, borderColor: cfg.warna, backgroundColor: cfg.bg, borderWidth: 3, pointBackgroundColor: '#2c3e50', pointRadius: 5, fill: true, tension: 0.3 }];
+            if (g.w !== null) dataset.push({ label: 'Batas WASPADA', data: Array(labels.length).fill(bulat(g.w, 3)), borderColor: '#f1c40f', borderWidth: 2, borderDash: [5, 5], pointRadius: 0 });
+            if (g.b !== null) dataset.push({ label: 'Batas BAHAYA', data: Array(labels.length).fill(bulat(g.b, 3)), borderColor: '#e74c3c', borderWidth: 2, borderDash: [5, 5], pointRadius: 0 });
+
+            const puncak = Math.max(...data.filter(v => v !== null), g.b || 0, g.w || 0, 0);
+            if (chartInstances[k]) chartInstances[k].destroy();
+            chartInstances[k] = new Chart(document.getElementById(cfg.canvas).getContext('2d'), {
+                type: 'line',
+                data: { labels: labels, datasets: dataset },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, suggestedMax: puncak > 0 ? puncak * 1.2 : undefined } }, plugins: { legend: { position: 'bottom' } } }
+            });
         });
+
+        terapkanTataLetakGrafik();
+    }
+
+    // Tampilkan hanya grafik yang dipilih; 1 grafik = lebar penuh, 2 = berdampingan, 3 = sejajar
+    function terapkanTataLetakGrafik() {
+        const aktif = Object.keys(KONFIG_GRAFIK).filter(k => document.getElementById(KONFIG_GRAFIK[k].cek).checked);
+        const kelas = aktif.length === 1 ? 'col-12' : (aktif.length === 2 ? 'col-12 col-md-6' : 'col-12 col-lg-4');
+        Object.keys(KONFIG_GRAFIK).forEach(k => {
+            document.getElementById(KONFIG_GRAFIK[k].kolom).className = aktif.includes(k) ? kelas : 'd-none';
+        });
+        setTimeout(() => { Object.values(chartInstances).forEach(c => { if (c) c.resize(); }); }, 60);
+    }
+
+    function ubahPilihanGrafik(el) {
+        const adaYangDipilih = Object.keys(KONFIG_GRAFIK).some(k => document.getElementById(KONFIG_GRAFIK[k].cek).checked);
+        if (!adaYangDipilih) {
+            el.checked = true;
+            alert("Minimal satu grafik harus ditampilkan.");
+        }
+        terapkanTataLetakGrafik();
     }
 
     function renderTabelDariDatabase(unitId, logs) {
@@ -310,7 +703,7 @@
         tabel.innerHTML = '';
         
         if(logs.length === 0) {
-            tabel.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Belum ada riwayat analisis AI untuk mesin ini.</td></tr>`;
+            tabel.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">Belum ada riwayat analisis AI untuk mesin ini.</td></tr>`;
             return;
         }
 
@@ -331,7 +724,8 @@
                 <tr data-unit="${item.id_mesin}" data-tanggal="${String(item.tgl_analisis).substring(0,10)}">
                     <td>${String(item.tgl_analisis).substring(0,10)}</td>
                     <td class="fw-bold">${item.id_mesin}</td>
-                    <td><span class="${badgeClass}">${item.status_iso}</span></td>
+                    <td><span class="${badgeClass}">${item.status_iso}</span>${(item.diagnosis_lengkap || '').includes('ditetapkan MANUAL') ? ' <i class="fa-solid fa-hand text-danger ms-1" title="Zona ditetapkan manual"></i>' : ''}</td>
+                    <td class="small text-nowrap">V: ${fmtNilaiTabel(item.nilai_vibrasi, 'mm/s')}<br>A: ${fmtNilaiTabel(item.nilai_acceleration, 'mg')}<br>D: ${fmtNilaiTabel(item.nilai_demodulation, 'mg')}</td>
                     <td>
                         <span class="teks-ringkas">${item.indikasi}</span>
                         <button type="button" class="btn btn-sm btn-outline-primary ms-2 py-0 fw-bold" onclick="bukaModalDetail(this)"><i class="fa-solid fa-magnifying-glass"></i> Detail</button>
@@ -349,6 +743,21 @@
         });
     }
 
+    // Format nilai ukur untuk tabel riwayat (nilai di database: velocity mm/s, acceleration & demodulation mg)
+    function fmtNilaiTabel(v, satuan) {
+        const n = angkaAtauNull(v);
+        return n === null ? '-' : `<b>${bulat(n, 3)}</b> ${satuan}`;
+    }
+
+    // Ambil satu blok HTML (mis. tabel penilaian) dari diagnosis tersimpan, tanpa mengeksekusi isinya
+    function ambilBlokTersimpan(html, selector) {
+        try {
+            const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
+            const el = doc.querySelector(selector);
+            return el ? el.outerHTML : '';
+        } catch (e) { return ''; }
+    }
+
     // Modal Functions
     function bukaModalEditAI(id) {
         const item = dbLogsAI.find(x => x.id === id);
@@ -356,6 +765,7 @@
         document.getElementById('editID').value = item.id;
         document.getElementById('editIndikasi').value = item.indikasi;
         document.getElementById('editRekomendasi').value = item.rekomendasi;
+        document.getElementById('editStatusIso').value = NAMA_ZONA[zonaDariTeks(item.status_iso)];
         new bootstrap.Modal(document.getElementById('modalEditAI')).show();
     }
 
@@ -363,18 +773,29 @@
         event.preventDefault();
         const id = parseInt(document.getElementById('editID').value);
         const item = dbLogsAI.find(x => x.id === id);
-        let borderColor = "border-warning"; let iconClass = "fa-circle-exclamation text-warning";
-        
-        if(item.status_iso.includes("Berbahaya") || item.status_iso.includes("Zone D")) {
-            borderColor = "border-danger"; iconClass = "fa-circle-xmark text-danger";
+        if(!item) return;
+
+        const statusBaru = document.getElementById('editStatusIso').value;
+        const zonaBaru = NAMA_ZONA.indexOf(statusBaru);
+        const zonaLama = zonaDariTeks(item.status_iso);
+        const info = infoZona(zonaBaru);
+
+        // Pertahankan tabel penilaian & catatan zona manual yang sudah ada; beri catatan baru bila zona diubah
+        const blokPenilaian = ambilBlokTersimpan(item.diagnosis_lengkap, '.blok-penilaian');
+        let catatanManual = ambilBlokTersimpan(item.diagnosis_lengkap, '.catatan-manual');
+        if (zonaBaru !== zonaLama) {
+            catatanManual = `<div class="catatan-manual small fw-bold text-danger mb-2"><i class="fa-solid fa-hand"></i> Zona ditetapkan MANUAL oleh pengguna (sebelumnya: ${escapeHtml(item.status_iso)}).</div>`;
         }
-        
-        const newHTML = `<h6 class="fw-bold text-dark mb-3"><i class="fa-solid ${iconClass}"></i> Diagnostik Terintegrasi: ${item.id_mesin}</h6><div class="bg-light p-3 rounded mb-3 border ${borderColor}"><p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p><p class="small mb-0">${document.getElementById('editIndikasi').value}</p></div><div class="bg-light p-3 rounded border ${borderColor}"><p class="fw-bold mb-2">Rekomendasi (Korektif):</p><p class="small mb-0">${document.getElementById('editRekomendasi').value}</p></div>`;
-        
-        fetch('/api/ai-analysis/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ indikasi: document.getElementById('editIndikasi').value, rekomendasi: document.getElementById('editRekomendasi').value, diagnosis: newHTML }) })
+
+        const indikasiBaru = document.getElementById('editIndikasi').value;
+        const rekomendasiBaru = document.getElementById('editRekomendasi').value;
+        const newHTML = `<h6 class="fw-bold text-dark mb-3"><i class="fa-solid ${info.icon}"></i> Diagnostik Terintegrasi: ${escapeHtml(item.id_mesin)}</h6>${catatanManual}<div class="bg-light p-3 rounded mb-3 border ${info.border}"><p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p><p class="small mb-0">${escapeHtml(indikasiBaru)}</p></div><div class="bg-light p-3 rounded mb-3 border ${info.border}"><p class="fw-bold mb-2">Rekomendasi (Korektif):</p><p class="small mb-0">${escapeHtml(rekomendasiBaru)}</p></div>${blokPenilaian}`;
+
+        fetch('/api/ai-analysis/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status_iso: statusBaru, indikasi: indikasiBaru, rekomendasi: rekomendasiBaru, diagnosis: newHTML }) })
         .then(res => res.json())
         .then(res => {
             alert(res.message);
+            if (res.status !== 'success') return;
             bootstrap.Modal.getInstance(document.getElementById('modalEditAI')).hide();
             muatDataLogAI(document.getElementById('pilihUnitAnalisis').value); 
         })
@@ -409,23 +830,133 @@
 
     // ==========================================
     // LOGIKA DUAL MODE (GEMINI AI & MANUAL)
+    // Zona SELALU dihitung oleh sistem dari nilai ukur + standar (atau ditetapkan manual oleh pengguna).
+    // AI hanya menulis indikasi & rekomendasi, tidak menentukan zona.
     // ==========================================
-    
+
     function verifikasiForm() {
         const unitId = document.getElementById('pilihUnitAnalisis').value;
-        const inputVib = document.getElementById('inputVibrasi').value;
-        const inputGejala = document.getElementById('inputGejala').value;
-        
+        const inputGejala = document.getElementById('inputGejala').value.trim();
+        const vel = angkaAtauNull(document.getElementById('inputVibrasi').value);
+
         if(!unitId) { alert("Pilih unit mesin terlebih dahulu!"); return false; }
-        if(!inputVib || !inputGejala) { alert("Vibrasi Overall dan Gejala wajib diisi!"); return false; }
-        
+        if(vel === null || !inputGejala) { alert("Velocity dan Gejala wajib diisi!"); return false; }
+        if(vel < 0) { alert("Nilai Velocity tidak boleh negatif."); return false; }
+
+        const set = ambilPengaturanStandar();
+        const velW = angkaAtauNull(set.velW), velB = angkaAtauNull(set.velB);
+        if (velW === null || velB === null || velW <= 0 || velB <= 0 || velW >= velB) {
+            alert("Batas Velocity tidak valid. Isi batas Waspada dan Bahaya (Waspada harus lebih kecil dari Bahaya) di menu 'Atur' standar penentu zona.");
+            return false;
+        }
+
+        const acc = { nilai: angkaAtauNull(document.getElementById('inputAcc').value), satuan: set.satuanAcc, batasW: angkaAtauNull(set.accW), batasB: angkaAtauNull(set.accB) };
+        const dem = { nilai: angkaAtauNull(document.getElementById('inputDem').value), satuan: set.satuanDem, batasW: angkaAtauNull(set.demW), batasB: angkaAtauNull(set.demB) };
+        if ((acc.nilai !== null && acc.nilai < 0) || (dem.nilai !== null && dem.nilai < 0)) { alert("Nilai Acceleration/Demodulation tidak boleh negatif."); return false; }
+        if (acc.batasW !== null && acc.batasB !== null && acc.batasW >= acc.batasB) { alert("Batas Acceleration: Waspada harus lebih kecil dari Bahaya."); return false; }
+        if (dem.batasW !== null && dem.batasB !== null && dem.batasW >= dem.batasB) { alert("Batas Demodulation: Waspada harus lebih kecil dari Bahaya."); return false; }
+        acc.mg = keMg(acc.nilai, acc.satuan);
+        dem.mg = keMg(dem.nilai, dem.satuan);
+
         return {
-            unitId: unitId, 
-            inputVib: parseFloat(inputVib), 
+            unitId: unitId,
             inputGejala: inputGejala,
+            vel: { nilai: vel, batasW: velW, batasB: velB },
+            acc: acc,
+            dem: dem,
+            standarLabel: (PRESET_STANDAR[set.preset] || PRESET_STANDAR.custom).label,
+            zonaManual: document.getElementById('zonaManual').value,
             linkPdf: document.getElementById('filePdf').value || "#",
             linkSs: document.getElementById('fileScreenshot').value || "#"
         };
+    }
+
+    // 1 = A/B (Aman), 2 = C (Waspada), 3 = D (Berbahaya); null = tidak dinilai
+    function skorZona(nilai, w, b) {
+        if (nilai === null) return null;
+        if (w === null && b === null) return null;
+        if (b !== null && nilai > b) return 3;
+        if (w !== null && nilai > w) return 2;
+        return 1;
+    }
+
+    function evaluasiZona(d) {
+        const rincian = [
+            { param: 'Velocity',     nilai: d.vel.nilai, satuan: 'mm/s',               w: d.vel.batasW, b: d.vel.batasB, zona: skorZona(d.vel.nilai, d.vel.batasW, d.vel.batasB) },
+            { param: 'Acceleration', nilai: d.acc.nilai, satuan: namaSatuan(d.acc.satuan), w: d.acc.batasW, b: d.acc.batasB, zona: skorZona(d.acc.nilai, d.acc.batasW, d.acc.batasB) },
+            { param: 'Demodulation', nilai: d.dem.nilai, satuan: namaSatuan(d.dem.satuan), w: d.dem.batasW, b: d.dem.batasB, zona: skorZona(d.dem.nilai, d.dem.batasW, d.dem.batasB) }
+        ];
+        const zonaHitung = Math.max(1, ...rincian.map(r => r.zona || 0)); // zona terburuk dari semua parameter yang dinilai
+        let zonaAkhir = zonaHitung, manual = false;
+        if (d.zonaManual !== 'auto') { zonaAkhir = NAMA_ZONA.indexOf(d.zonaManual); manual = true; }
+        return { rincian: rincian, zonaHitung: zonaHitung, zonaAkhir: zonaAkhir, manual: manual };
+    }
+
+    // Konfirmasi bila zona manual LEBIH RENDAH dari hasil hitungan standar (mencegah salah pilih)
+    function konfirmasiZonaManual(ev) {
+        if (ev.manual && ev.zonaAkhir < ev.zonaHitung) {
+            return confirm(`Hitungan standar menghasilkan ${NAMA_ZONA[ev.zonaHitung]}, tetapi Anda menetapkan ${NAMA_ZONA[ev.zonaAkhir]}.\n\nLanjutkan dengan zona manual?`);
+        }
+        return true;
+    }
+
+    function teksNilai(p) { return p.nilai === null ? '' : `${bulat(p.nilai, 3)} ${namaSatuan(p.satuan)}`; }
+
+    function ringkasanNilaiTeks(d) {
+        let t = `Velocity ${bulat(d.vel.nilai, 3)} mm/s`;
+        if (d.acc.nilai !== null) t += `, Acceleration ${teksNilai(d.acc)}`;
+        if (d.dem.nilai !== null) t += `, Demodulation ${teksNilai(d.dem)}`;
+        return t;
+    }
+
+    function catatanRpmRendah(unitId) {
+        const rpm = parseRpm(rpmMesinTeks(unitId));
+        if (rpm !== null && rpm > 0 && rpm < 120) return " Catatan: RPM mesin rendah, nilai velocity yang kecil tidak menjamin kondisi baik; verifikasi dengan acceleration/demodulation dan inspeksi fisik.";
+        return "";
+    }
+
+    function bangunHtmlDetail(judulDiagnostik, d, ev, p_indikasi, p_rek) {
+        const info = infoZona(ev.zonaAkhir);
+        const baris = ev.rincian.map(r => {
+            if (r.nilai === null) return `<tr><td>${r.param}</td><td colspan="3" class="text-muted">tidak diukur</td></tr>`;
+            const batas = (r.w === null && r.b === null) ? '<span class="text-muted">belum ada batas</span>' : `Waspada &gt; ${r.w === null ? '-' : r.w} | Bahaya &gt; ${r.b === null ? '-' : r.b}`;
+            const zona = r.zona === null ? '<span class="text-muted">tidak dinilai</span>' : NAMA_ZONA[r.zona];
+            return `<tr><td>${r.param}</td><td>${bulat(r.nilai, 3)} ${r.satuan}</td><td>${batas}</td><td>${zona}</td></tr>`;
+        }).join('');
+        const catatanManual = ev.manual ? `<div class="catatan-manual small fw-bold text-danger mb-2"><i class="fa-solid fa-hand"></i> Zona ditetapkan MANUAL oleh pengguna (hitungan standar: ${NAMA_ZONA[ev.zonaHitung]}).</div>` : '';
+        return `<h6 class="fw-bold text-dark mb-3"><i class="fa-solid ${info.icon}"></i> ${judulDiagnostik}: ${escapeHtml(d.unitId)}</h6>` +
+               catatanManual +
+               `<div class="bg-light p-3 rounded mb-3 border ${info.border}"><p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p><p class="small mb-0">${escapeHtml(p_indikasi)}</p></div>` +
+               `<div class="bg-light p-3 rounded mb-3 border ${info.border}"><p class="fw-bold mb-2">Rekomendasi (Korektif):</p><p class="small mb-0">${escapeHtml(p_rek)}</p></div>` +
+               `<div class="blok-penilaian bg-light p-3 rounded border ${info.border}"><p class="fw-bold mb-2">Penilaian per Parameter <span class="fw-normal text-muted">(${escapeHtml(d.standarLabel)})</span>:</p>` +
+               `<table class="table table-sm tabel-zona mb-0"><thead><tr><th>Parameter</th><th>Nilai</th><th>Batas</th><th>Zona</th></tr></thead><tbody>${baris}</tbody></table></div>`;
+    }
+
+    // Tampilkan hasil di panel, lalu simpan ke database
+    function tampilkanHasilDanSimpan(judulDiagnostik, d, ev, p_indikasi, p_rek) {
+        const badge = document.getElementById('badgeStatus');
+        const hasil = document.getElementById('kontenHasilAi');
+        const p_status = NAMA_ZONA[ev.zonaAkhir];
+        const p_htmlDetail = bangunHtmlDetail(judulDiagnostik, d, ev, p_indikasi, p_rek);
+
+        badge.className = "badge " + infoZona(ev.zonaAkhir).badge;
+        badge.innerText = p_status + (ev.manual ? " (manual)" : "");
+        hasil.innerHTML = `<div class="text-white">${p_htmlDetail.replace(/bg-light/g, 'bg-dark bg-opacity-50 text-white').replace(/text-dark/g, 'text-white')}</div>`;
+
+        eksekusiDatabase({
+            id_mesin: d.unitId, tgl_analisis: new Date().toISOString().split('T')[0], status_iso: p_status,
+            nilai_vibrasi: d.vel.nilai, nilai_acceleration: bulat(d.acc.mg, 4), nilai_demodulation: bulat(d.dem.mg, 4),
+            indikasi: p_indikasi, diagnosis_lengkap: p_htmlDetail,
+            rekomendasi: p_rek, file_pdf: d.linkPdf, file_gambar: d.linkSs
+        });
+    }
+
+    function resetFormData() {
+        ['inputVibrasi', 'inputAcc', 'inputDem', 'inputGejala', 'filePdf', 'fileScreenshot'].forEach(id => { document.getElementById(id).value = ''; });
+        document.getElementById('zonaManual').value = 'auto';
+        const fft = document.getElementById('inputGejala');
+        fft.style.height = ''; fft.style.overflowY = 'hidden';
+        // Pengaturan standar zona sengaja TIDAK di-reset
     }
 
     function eksekusiDatabase(payload) {
@@ -439,17 +970,16 @@
             const isJson = res.headers.get('content-type')?.includes('application/json');
             const data = isJson ? await res.json() : null;
             if (!res.ok) {
-                // Jika server python error (misal database kepenuhan)
-                const errorText = data && data.message ? data.message : await res.text();
-                throw new Error("Server Database menolak data. (Batas karakter mungkin kurang besar).");
+                const pesanServer = data && data.message ? data.message : "Server menolak data (respons bukan JSON).";
+                throw new Error(pesanServer);
             }
             return data;
         })
         .then(response => {
-            muatDataLogAI(payload.id_mesin);
+            muatDataLogAI(payload.id_mesin, true); // true = hasil analisis tetap tampil di panel
             document.getElementById('btnProsesAI').disabled = false;
             document.getElementById('btnProsesManual').disabled = false;
-            document.getElementById('formAnalisisGabungan').reset();
+            resetFormData();
             alert("Hasil analisis berhasil disimpan ke database!");
         })
         .catch(err => {
@@ -464,6 +994,8 @@
     function analisisDenganGemini() {
         const dataForm = verifikasiForm();
         if(!dataForm) return;
+        const ev = evaluasiZona(dataForm);
+        if (!konfirmasiZonaManual(ev)) return;
 
         const btnProses = document.getElementById('btnProsesAI');
         const badge = document.getElementById('badgeStatus');
@@ -479,7 +1011,19 @@
         fetch('/api/generate-ai', {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ vibrasi: dataForm.inputVib, gejala: dataForm.inputGejala })
+            body: JSON.stringify({
+                vibrasi: dataForm.vel.nilai,
+                acc_teks: teksNilai(dataForm.acc),
+                dem_teks: teksNilai(dataForm.dem),
+                gejala: dataForm.inputGejala,
+                rpm: rpmMesinTeks(dataForm.unitId),
+                standar: dataForm.standarLabel,
+                batas_waspada: dataForm.vel.batasW,
+                batas_bahaya: dataForm.vel.batasB,
+                zona: NAMA_ZONA[ev.zonaAkhir],
+                zona_manual: ev.manual,
+                zona_hitung: NAMA_ZONA[ev.zonaHitung]
+            })
         })
         .then(res => res.json())
         .then(ai_response => {
@@ -494,27 +1038,11 @@
                 return;
             }
             
-            const dataAI = ai_response.data;
-            const p_status = dataAI.status_iso || "Zone A/B (Aman)";
+            // Zona TIDAK diambil dari AI; AI hanya dipakai untuk teks indikasi & rekomendasi
+            const dataAI = ai_response.data || {};
             const p_indikasi = dataAI.indikasi || "Gejala terbaca normal.";
             const p_rek = dataAI.rekomendasi || "Lanjutkan pemantauan rutin.";
-
-            let borderColor = "border-success"; let iconClass = "fa-circle-check text-success";
-            if(p_status.includes("Waspada")) { borderColor = "border-warning"; iconClass = "fa-circle-exclamation text-warning"; }
-            if(p_status.includes("Berbahaya")) { borderColor = "border-danger"; iconClass = "fa-circle-xmark text-danger"; }
-
-            const p_htmlDetail = `<h6 class="fw-bold text-dark mb-3"><i class="fa-solid ${iconClass}"></i> Diagnostik AI Terintegrasi (Powered by Gemini): ${dataForm.unitId}</h6><div class="bg-light p-3 rounded mb-3 border ${borderColor}"><p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p><p class="small mb-0">${p_indikasi}</p></div><div class="bg-light p-3 rounded border ${borderColor}"><p class="fw-bold mb-2">Rekomendasi (Korektif):</p><p class="small mb-0">${p_rek}</p></div>`;
-            
-            let kotakStatusColor = p_status.includes("Berbahaya") ? "bg-danger" : (p_status.includes("Waspada") ? "bg-warning text-dark" : "bg-success");
-            badge.className = "badge " + kotakStatusColor; 
-            badge.innerText = p_status;
-            hasil.innerHTML = `<div class="text-white">${p_htmlDetail.replace(/bg-light/g, 'bg-dark bg-opacity-50 text-white').replace(/text-dark/g, 'text-white')}</div>`;
-
-            eksekusiDatabase({
-                id_mesin: dataForm.unitId, tgl_analisis: new Date().toISOString().split('T')[0], status_iso: p_status,
-                nilai_vibrasi: dataForm.inputVib, indikasi: p_indikasi, diagnosis_lengkap: p_htmlDetail, 
-                rekomendasi: p_rek, file_pdf: dataForm.linkPdf, file_gambar: dataForm.linkSs
-            });
+            tampilkanHasilDanSimpan("Diagnostik AI Terintegrasi (Powered by Gemini)", dataForm, ev, p_indikasi, p_rek);
         })
         .catch(err => {
             alert("Kesalahan jaringan saat memproses API AI!");
@@ -527,6 +1055,8 @@
     function analisisDenganRule() {
         const dataForm = verifikasiForm();
         if(!dataForm) return;
+        const ev = evaluasiZona(dataForm);
+        if (!konfirmasiZonaManual(ev)) return;
 
         const btnManual = document.getElementById('btnProsesManual');
         const badge = document.getElementById('badgeStatus');
@@ -540,48 +1070,36 @@
         hasil.innerHTML = `<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin fs-1 text-info"></i><p class="mt-2 text-white">Mengevaluasi Parameter ISO 10816-3...</p></div>`;
 
         setTimeout(() => {
-            let p_status = "", p_indikasi = "", p_rek = "", borderColor = "", iconClass = "";
-            let gejalaText = dataForm.inputGejala.toLowerCase();
-            
-            if (dataForm.inputVib <= 2.8) {
-                p_status = "Zone A/B (Aman)"; borderColor = "border-success"; iconClass = "fa-circle-check text-success";
-            } else if (dataForm.inputVib <= 4.5) {
-                p_status = "Zone C (Waspada)"; borderColor = "border-warning"; iconClass = "fa-circle-exclamation text-warning";
-            } else {
-                p_status = "Zone D (Berbahaya)"; borderColor = "border-danger"; iconClass = "fa-circle-xmark text-danger";
-            }
+            const z = ev.zonaAkhir;
+            const nilaiTeks = ringkasanNilaiTeks(dataForm);
+            const gejalaText = dataForm.inputGejala.toLowerCase();
+            const demTinggi = (ev.rincian[2].zona || 0) >= 2;
+            const accTinggi = (ev.rincian[1].zona || 0) >= 2;
+            let p_indikasi = "", p_rek = "";
 
-            if (dataForm.inputVib <= 2.8) {
-                p_indikasi = `Vibrasi (${dataForm.inputVib} mm/s) batas wajar. Terdapat indikasi: ${dataForm.inputGejala}.`;
+            if (z === 1) {
+                p_indikasi = `${nilaiTeks} berada dalam batas wajar. Terdapat indikasi: ${dataForm.inputGejala}.`;
                 p_rek = "Lanjutkan pemantauan rutin sesuai jadwal.";
+            } else if (gejalaText.includes("1x")) {
+                p_indikasi = `${nilaiTeks}. Puncak 1X RPM mengindikasikan Unbalance pada rotor.`;
+                p_rek = "Lakukan pembersihan rotor dan jadwalkan Dynamic Balancing.";
+            } else if (gejalaText.includes("2x") || gejalaText.includes("misalignment")) {
+                p_indikasi = `${nilaiTeks}. Puncak 2X RPM mengindikasikan Misalignment atau masalah kopling.`;
+                p_rek = "Lakukan Laser Alignment dan periksa karet kopling.";
+            } else if (gejalaText.includes("bearing") || gejalaText.includes("non-synchronous") || demTinggi) {
+                p_indikasi = `${nilaiTeks}. Spektrum/demodulation mendeteksi indikasi keausan Rolling Element Bearing.`;
+                p_rek = "Jadwalkan penggantian bearing segera dan periksa kondisi pelumasan.";
+            } else if (accTinggi) {
+                p_indikasi = `${nilaiTeks}. Acceleration tinggi mengindikasikan kemungkinan kelonggaran (looseness), masalah pelumasan, atau defek frekuensi tinggi.`;
+                p_rek = "Periksa kekencangan baut/pondasi dan kondisi pelumasan, lalu lakukan inspeksi lanjutan.";
             } else {
-                if (gejalaText.includes("1x")) {
-                    p_indikasi = `Vibrasi ${dataForm.inputVib} mm/s. Puncak 1X RPM mengindikasikan Unbalance pada rotor.`;
-                    p_rek = "Lakukan pembersihan rotor dan jadwalkan Dynamic Balancing.";
-                } else if (gejalaText.includes("2x") || gejalaText.includes("misalignment")) {
-                    p_indikasi = `Vibrasi ${dataForm.inputVib} mm/s. Puncak 2X RPM mengindikasikan Misalignment atau masalah kopling.`;
-                    p_rek = "Lakukan Laser Alignment dan periksa karet kopling.";
-                } else if (gejalaText.includes("bearing") || gejalaText.includes("non-synchronous")) {
-                    p_indikasi = `Vibrasi ${dataForm.inputVib} mm/s. Spektrum mendeteksi keausan Rolling Element Bearing.`;
-                    p_rek = "Jadwalkan penggantian bearing segera.";
-                } else {
-                    p_indikasi = `Vibrasi ${dataForm.inputVib} mm/s tinggi. Kelainan spektrum: ${dataForm.inputGejala}.`;
-                    p_rek = "Segera jadwalkan inspeksi menyeluruh oleh tim teknis.";
-                }
+                p_indikasi = `${nilaiTeks}. Kelainan spektrum: ${dataForm.inputGejala}.`;
+                p_rek = "Segera jadwalkan inspeksi menyeluruh oleh tim teknis.";
             }
+            if (ev.manual) p_indikasi += ` Zona ditetapkan manual oleh pengguna (hitungan standar: ${NAMA_ZONA[ev.zonaHitung]}).`;
+            p_indikasi += catatanRpmRendah(dataForm.unitId);
 
-            const p_htmlDetail = `<h6 class="fw-bold text-dark mb-3"><i class="fa-solid ${iconClass}"></i> Diagnostik Sistem Manual: ${dataForm.unitId}</h6><div class="bg-light p-3 rounded mb-3 border ${borderColor}"><p class="fw-bold mb-2">Rujukan Spektrum & Indikasi:</p><p class="small mb-0">${p_indikasi}</p></div><div class="bg-light p-3 rounded border ${borderColor}"><p class="fw-bold mb-2">Rekomendasi (Korektif):</p><p class="small mb-0">${p_rek}</p></div>`;
-            
-            let kotakStatusColor = p_status.includes("Berbahaya") ? "bg-danger" : (p_status.includes("Waspada") ? "bg-warning text-dark" : "bg-success");
-            badge.className = "badge " + kotakStatusColor; 
-            badge.innerText = p_status;
-            hasil.innerHTML = `<div class="text-white">${p_htmlDetail.replace(/bg-light/g, 'bg-dark bg-opacity-50 text-white').replace(/text-dark/g, 'text-white')}</div>`;
-
-            eksekusiDatabase({
-                id_mesin: dataForm.unitId, tgl_analisis: new Date().toISOString().split('T')[0], status_iso: p_status,
-                nilai_vibrasi: dataForm.inputVib, indikasi: p_indikasi, diagnosis_lengkap: p_htmlDetail, 
-                rekomendasi: p_rek, file_pdf: dataForm.linkPdf, file_gambar: dataForm.linkSs
-            });
+            tampilkanHasilDanSimpan("Diagnostik Sistem Manual", dataForm, ev, p_indikasi, p_rek);
         }, 1000); // Simulasi waktu proses
     }
 

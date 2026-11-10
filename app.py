@@ -127,23 +127,48 @@ def generate_ai_diagnosis():
     data = request.json
     vib = data.get('vibrasi')
     gejala = data.get('gejala')
-    
+    acc_teks = data.get('acc_teks') or 'tidak diukur'
+    dem_teks = data.get('dem_teks') or 'tidak diukur'
+    rpm = data.get('rpm') or 'tidak tercatat'
+    standar = data.get('standar') or 'ISO 10816-3'
+    batas_w = data.get('batas_waspada')
+    batas_b = data.get('batas_bahaya')
+    zona = data.get('zona')                 # zona akhir yang SUDAH ditetapkan sistem/pengguna
+    zona_manual = bool(data.get('zona_manual'))
+    zona_hitung = data.get('zona_hitung')
+
+    baris_batas = ""
+    if batas_w is not None and batas_b is not None:
+        baris_batas = f" (acuan: {standar}; Waspada jika > {batas_w} mm/s, Bahaya jika > {batas_b} mm/s)"
+
+    if zona:
+        keterangan_manual = ""
+        if zona_manual:
+            keterangan_manual = f" (ditetapkan manual oleh teknisi berdasarkan kondisi lapangan; hitungan standar saja menghasilkan \"{zona_hitung}\")"
+        baris_zona = f"Zona kondisi mesin SUDAH DITETAPKAN: \"{zona}\"{keterangan_manual}. Jangan mengubah atau mempertanyakan zona tersebut; tulis indikasi dan rekomendasi yang KONSISTEN dengan zona itu."
+        bentuk_json = '{{"indikasi": "Terdapat unbalance ...", "rekomendasi": "Lakukan pembersihan ..."}}'
+        tugas_status = ""
+    else:
+        baris_zona = ""
+        bentuk_json = '{{"status_iso": "Zone C (Waspada)", "indikasi": "Terdapat unbalance ...", "rekomendasi": "Lakukan pembersihan ..."}}'
+        tugas_status = "0. Tentukan Status ISO 10816-3 (Pilih salah satu persis: \"Zone A/B (Aman)\", \"Zone C (Waspada)\", atau \"Zone D (Berbahaya)\").\n    "
+
     prompt = f"""
     Anda adalah seorang insinyur Pakar Analisis Vibrasi Mesin Industri (berpedoman pada ISO 10816-3 & Mobius Institute).
-    Sebuah mesin menunjukkan nilai vibrasi overall sebesar {vib} mm/s (berbasis Rigid Foundation).
-    Gejala spektrum (FFT) dominan yang diamati oleh teknisi di lapangan adalah: "{gejala}".
+    Data pengukuran mesin:
+    - Velocity overall: {vib} mm/s{baris_batas}
+    - Acceleration: {acc_teks}
+    - Demodulation (envelope): {dem_teks}
+    - RPM mesin: {rpm}
+    - Gejala spektrum (FFT) dominan yang diamati teknisi di lapangan: \"{gejala}\"
+    {baris_zona}
 
     Tugas Anda:
-    1. Tentukan Status ISO 10816-3 (Pilih salah satu persis seperti ini: "Zone A/B (Aman)", "Zone C (Waspada)", atau "Zone D (Berbahaya)").
-    2. Berikan "Indikasi" masalah (maksimal 2 kalimat) berdasarkan perpaduan nilai vibrasi dan gejala FFT tersebut.
-    3. Berikan "Rekomendasi" teknis (maksimal 2 kalimat) mengenai tindakan maintenance korektif apa yang harus segera dilakukan mekanik.
+    {tugas_status}1. Berikan \"Indikasi\" masalah (maksimal 2 kalimat) berdasarkan perpaduan seluruh nilai ukur dan gejala FFT tersebut.
+    2. Berikan \"Rekomendasi\" teknis (maksimal 2 kalimat) mengenai tindakan maintenance korektif apa yang harus segera dilakukan mekanik.
 
     PENTING: Output Anda HARUS murni berbentuk JSON format seperti di bawah ini, tanpa teks pengantar, dan tanpa penanda markdown (```json).
-    {{
-        "status_iso": "Zone C (Waspada)",
-        "indikasi": "Terdapat unbalance ...",
-        "rekomendasi": "Lakukan pembersihan ..."
-    }}
+    {bentuk_json.format()}
     """
     
     MAX_PERCOBAAN = 3
@@ -161,6 +186,10 @@ def generate_ai_diagnosis():
             elif ai_teks.startswith("```"): ai_teks = ai_teks[3:-3].strip()
 
             hasil_json = json.loads(ai_teks)
+            if not isinstance(hasil_json, dict):
+                raise ValueError("Format jawaban AI tidak sesuai (bukan objek JSON).")
+            if zona:
+                hasil_json['status_iso'] = zona  # zona selalu mengikuti penetapan sistem/pengguna
             return jsonify({"status": "success", "data": hasil_json})
 
         except Exception as e:
@@ -437,15 +466,18 @@ def handle_ai_analysis():
             elif request.method == 'POST':
                 if 'loggedin' not in session: return jsonify({"error": "Belum login"}), 403
                 data = request.json
-                sql = """INSERT INTO log_ai_analysis (id_mesin, tgl_analisis, status_iso, nilai_vibrasi, indikasi, diagnosis_lengkap, rekomendasi, file_pdf, file_gambar) 
-                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+                sql = """INSERT INTO log_ai_analysis (id_mesin, tgl_analisis, status_iso, nilai_vibrasi, nilai_acceleration, nilai_demodulation, indikasi, diagnosis_lengkap, rekomendasi, file_pdf, file_gambar) 
+                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
                 cursor.execute(sql, (
                     data.get('id_mesin'), data.get('tgl_analisis'), data.get('status_iso'), 
-                    data.get('nilai_vibrasi'), data.get('indikasi'), data.get('diagnosis_lengkap'), 
+                    data.get('nilai_vibrasi'), data.get('nilai_acceleration'), data.get('nilai_demodulation'), 
+                    data.get('indikasi'), data.get('diagnosis_lengkap'), 
                     data.get('rekomendasi'), data.get('file_pdf'), data.get('file_gambar')
                 ))
                 conn.commit()
                 return jsonify({"status": "success", "message": "Log Analisis AI berhasil disimpan secara permanen!"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Gagal memproses log analisis. Jika menyebut kolom 'nilai_acceleration'/'nilai_demodulation', jalankan dulu ALTER TABLE-nya di database. Detail: {str(e)}"}), 500
     finally:
         conn.close()
 
@@ -457,16 +489,22 @@ def manage_ai_analysis_id(id):
         with conn.cursor() as cursor:
             if request.method == 'PUT':
                 data = request.json
+                # status_iso opsional: bila tidak dikirim, zona lama dipertahankan
+                status_baru = data.get('status_iso')
+                if status_baru not in (None, 'Zone A/B (Aman)', 'Zone C (Waspada)', 'Zone D (Berbahaya)'):
+                    return jsonify({"status": "error", "message": "Nilai zona tidak dikenali."}), 400
                 sql = """UPDATE log_ai_analysis 
-                         SET indikasi=%s, diagnosis_lengkap=%s, rekomendasi=%s 
+                         SET status_iso=COALESCE(%s, status_iso), indikasi=%s, diagnosis_lengkap=%s, rekomendasi=%s 
                          WHERE id=%s"""
-                cursor.execute(sql, (data.get('indikasi'), data.get('diagnosis'), data.get('rekomendasi'), id))
+                cursor.execute(sql, (status_baru, data.get('indikasi'), data.get('diagnosis'), data.get('rekomendasi'), id))
                 pesan = "Data Log Diagnosa AI berhasil diperbarui!"
             elif request.method == 'DELETE':
                 cursor.execute("DELETE FROM log_ai_analysis WHERE id = %s", (id,))
                 pesan = "Data Log AI berhasil dihapus permanen!"
             conn.commit()
             return jsonify({"status": "success", "message": pesan})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Gagal memperbarui log analisis. Detail: {str(e)}"}), 500
     finally:
         conn.close()
 
