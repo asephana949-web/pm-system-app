@@ -49,6 +49,12 @@ def get_db_connection():
     return pymysql.connect(**DB_CONFIG)
 
 # ==========================================
+# MODUL WORK ORDER (WO) TERPUSAT -> lihat wo_module.py
+# ==========================================
+from wo_module import init_wo
+init_wo(app, get_db_connection)
+
+# ==========================================
 # ANTI-CACHE HEADER KHUSUS VERCEL
 # ==========================================
 @app.after_request

@@ -1,0 +1,187 @@
+{% extends 'wo_base.html' %}
+{% block title %}{% if is_pemohon %}WO Saya{% else %}Daftar WO{% endif %}{% endblock %}
+
+{% block head %}
+<style>
+    table.wo-table { width: 100%; font-size: .92rem; }
+    table.wo-table th { font-weight: 500; color: var(--muted); font-size: .8rem; padding: .6rem .75rem; border-bottom: 1px solid var(--line); white-space: nowrap; background: #fafbfc; }
+    table.wo-table td { padding: .65rem .75rem; border-bottom: 1px solid #eef1f3; vertical-align: top; }
+    table.wo-table tr.baris { cursor: pointer; }
+    table.wo-table tr.baris:hover td { background: #f7fafa; }
+    table.wo-table tr.tutup td { color: var(--muted); }
+    .antri-info { font-size: .78rem; color: #7a5200; margin-top: .2rem; }
+    .detail-grid { display: grid; grid-template-columns: 9rem 1fr; gap: .35rem 1rem; font-size: .92rem; }
+    .detail-grid dt { color: var(--muted); font-weight: 400; }
+    .detail-grid dd { margin: 0; }
+    .catatan-terbaru { background: var(--accent-soft); border-left: 4px solid var(--accent); padding: .6rem .8rem; border-radius: 0 4px 4px 0; font-size: .92rem; }
+    .riwayat { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--line); }
+    .riwayat li { padding: 0 0 .9rem 1rem; position: relative; font-size: .88rem; }
+    .riwayat li::before { content: ''; position: absolute; left: -6px; top: .3rem; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+    .riwayat .waktu { color: var(--muted); font-size: .78rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end mb-3">
+    <h1 class="page-title">{% if is_pemohon %}WO yang Anda ajukan{% else %}Daftar Work Order{% endif %}</h1>
+    <a class="btn btn-accent" href="{{ url_for('wo_baru') }}"><i class="fa-solid fa-plus me-1"></i>Buat WO</a>
+</div>
+
+<div class="panel mb-3"><div class="panel-body">
+    <div class="row g-2">
+        <div class="col-md-5"><input id="fCari" type="search" class="form-control" placeholder="Cari no. WO, pekerjaan, lokasi, pemohon, atau petugas" aria-label="Cari WO"></div>
+        <div class="col-6 col-md-3"><select id="fStatus" class="form-select" aria-label="Filter status">
+            <option value="aktif">Semua yang masih aktif</option><option value="">Semua status</option>
+            {% for s in status_list %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select></div>
+        <div class="col-6 col-md-2"><select id="fSeksi" class="form-select" aria-label="Filter seksi">
+            <option value="">Semua seksi</option>{% for s in seksi_list %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select></div>
+        <div class="col-md-2 d-flex align-items-center muted small" id="jumlahTampil"></div>
+    </div>
+</div></div>
+
+<div class="panel"><div class="table-responsive">
+    <table class="wo-table">
+        <thead><tr><th>No. WO</th><th>Pekerjaan</th><th>Pemohon</th><th>Seksi</th><th>Prioritas</th><th>Status</th><th>Umur</th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="7" class="p-3 muted">Memuat data...</td></tr></tbody>
+    </table>
+</div></div>
+
+<!-- Detail WO -->
+<div class="modal fade" id="modalDetail" tabindex="-1" aria-labelledby="judulModal" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+        <div class="modal-header"><div><div class="muted small" id="mNo"></div><h2 class="modal-title fs-5" id="judulModal"></h2></div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div>
+        <div class="modal-body" id="mBody"></div>
+    </div></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const RANK = Object.fromEntries(WO.prioritas.map((p, i) => [p, i]));
+let semua = [], idTerbuka = null;
+const modalDetail = new bootstrap.Modal(document.getElementById('modalDetail'));
+
+function urut(a, b) {
+    const aa = WO.aktif.includes(a.status), ab = WO.aktif.includes(b.status);
+    if (aa !== ab) return aa ? -1 : 1;
+    return aa ? ((RANK[a.prioritas] - RANK[b.prioritas]) || (a.id - b.id)) : (b.id - a.id);
+}
+
+function render() {
+    const q = document.getElementById('fCari').value.trim().toLowerCase();
+    const fs = document.getElementById('fStatus').value, fk = document.getElementById('fSeksi').value;
+    const tampil = semua.filter(w => {
+        if (fs === 'aktif' && !WO.aktif.includes(w.status)) return false;
+        if (fs && fs !== 'aktif' && w.status !== fs) return false;
+        if (fk && w.seksi_tujuan !== fk) return false;
+        if (!q) return true;
+        return [w.no_wo, w.no_ref, w.judul, w.lokasi, w.nama_pemohon, w.departemen_pemohon, w.assign_ke, w.id_mesin]
+            .some(v => v && String(v).toLowerCase().includes(q));
+    }).sort(urut);
+    document.getElementById('jumlahTampil').textContent = `${tampil.length} dari ${semua.length} WO`;
+    document.getElementById('tbody').innerHTML = tampil.length ? tampil.map(w => {
+        const aktif = WO.aktif.includes(w.status);
+        const info = [];
+        if (w.antrian_ke) info.push(`<div class="antri-info">Antrian ke-${w.antrian_ke} dari ${w.antrian_total} di ${esc(w.seksi_tujuan)}</div>`);
+        if (w.terlambat) info.push('<div class="flag-telat">Lewat batas waktu</div>');
+        return `<tr class="baris ${aktif ? '' : 'tutup'}" data-id="${w.id}">
+            <td class="text-nowrap">${esc(w.no_wo)}</td>
+            <td><div>${esc(w.judul)}</div><div class="muted small">${esc(w.lokasi)}</div></td>
+            <td><div>${esc(w.nama_pemohon)}</div><div class="muted small">${esc(w.departemen_pemohon)}</div></td>
+            <td>${esc(w.seksi_tujuan)}</td><td>${badgePrioritas(w.prioritas)}</td>
+            <td>${badgeStatus(w.status)}${info.join('')}</td>
+            <td class="text-nowrap">${w.umur_hari === null ? '-' : w.umur_hari + ' hari'}</td></tr>`;
+    }).join('') : '<tr><td colspan="7" class="p-3 muted">Tidak ada WO yang cocok dengan filter ini.</td></tr>';
+}
+
+async function muat() {
+    try {
+        semua = (await woFetch('/api/wo')).items;
+        render();
+        const buka = new URLSearchParams(location.search).get('buka');
+        if (buka) { history.replaceState(null, '', '/wo'); bukaDetail(+buka); }
+    } catch (e) {
+        document.getElementById('tbody').innerHTML = `<tr><td colspan="7" class="p-3 text-danger">${esc(e.message)}</td></tr>`;
+    }
+}
+
+function opsi(daftar, terpilih) {
+    return daftar.map(x => `<option value="${esc(x)}" ${x === terpilih ? 'selected' : ''}>${esc(x)}</option>`).join('');
+}
+
+async function bukaDetail(id) {
+    try {
+        const d = await woFetch('/api/wo/' + id);
+        const w = d.wo; idTerbuka = id;
+        document.getElementById('mNo').textContent = w.no_wo + (w.no_ref ? ' (ref. ' + w.no_ref + ')' : '');
+        document.getElementById('judulModal').textContent = w.judul;
+        let h = '';
+        if (w.keterangan) h += `<div class="catatan-terbaru mb-3"><div class="muted small">Catatan terbaru</div>${esc(w.keterangan)}</div>`;
+        h += `<dl class="detail-grid mb-3">
+            <dt>Status</dt><dd>${badgeStatus(w.status)} ${w.antrian_ke ? `<span class="antri-info">Antrian ke-${w.antrian_ke} dari ${w.antrian_total} di ${esc(w.seksi_tujuan)}</span>` : ''} ${w.terlambat ? '<span class="flag-telat ms-1">Lewat batas waktu</span>' : ''}</dd>
+            <dt>Prioritas</dt><dd>${badgePrioritas(w.prioritas)}</dd>
+            <dt>Seksi tujuan</dt><dd>${esc(w.seksi_tujuan)}</dd>
+            <dt>Lokasi</dt><dd>${esc(w.lokasi)}${w.id_mesin ? ' (ID mesin ' + esc(w.id_mesin) + ')' : ''}</dd>
+            <dt>Pemohon</dt><dd>${esc(w.nama_pemohon)}, ${esc(w.departemen_pemohon)}</dd>
+            <dt>Uraian</dt><dd style="white-space:pre-wrap">${esc(w.deskripsi)}</dd>
+            <dt>Masuk</dt><dd>${fmtTgl(w.tgl_masuk)}</dd>
+            <dt>Dibutuhkan sebelum</dt><dd>${fmtTgl(w.tgl_dibutuhkan)}</dd>
+            <dt>Estimasi selesai</dt><dd>${fmtTgl(w.target_selesai)}</dd>
+            <dt>Ditugaskan ke</dt><dd>${esc(w.assign_ke || '-')}</dd>
+            <dt>Mulai dikerjakan</dt><dd>${fmtTgl(w.tgl_mulai)}</dd>
+            <dt>Selesai</dt><dd>${fmtTgl(w.tgl_selesai)}</dd></dl>`;
+
+        if (WO.canManage) {
+            h += `<hr><h3 class="fs-6 mb-3">Perbarui WO</h3>
+            <div class="row g-2 mb-2">
+                <div class="col-md-4"><label class="form-label small" for="uStatus">Status</label><select id="uStatus" class="form-select">${opsi(WO.status, w.status)}</select></div>
+                <div class="col-md-4"><label class="form-label small" for="uPrio">Prioritas</label><select id="uPrio" class="form-select">${opsi(WO.prioritas, w.prioritas)}</select></div>
+                <div class="col-md-4"><label class="form-label small" for="uSeksi">Seksi tujuan</label><select id="uSeksi" class="form-select">${opsi(WO.seksi, w.seksi_tujuan)}</select></div>
+                <div class="col-md-6"><label class="form-label small" for="uAssign">Ditugaskan ke (regu atau nama)</label><input id="uAssign" class="form-control" maxlength="100" value="${esc(w.assign_ke || '')}"></div>
+                <div class="col-md-6"><label class="form-label small" for="uTarget">Estimasi selesai</label><input id="uTarget" type="date" class="form-control" value="${esc(w.target_selesai || '')}"></div>
+                <div class="col-12"><label class="form-label small" for="uCatatan">Catatan untuk pemohon <span class="muted">(wajib bila status Menunggu atau Dibatalkan, misalnya alasan tertunda)</span></label>
+                    <textarea id="uCatatan" class="form-control" rows="2" maxlength="1000"></textarea></div></div>
+            <button class="btn btn-accent" id="btnSimpan" onclick="simpan(${id})">Simpan perubahan</button>`;
+        } else if (WO.isPemohon && w.status === 'Baru') {
+            h += `<hr><h3 class="fs-6 mb-2">Batalkan WO ini</h3>
+            <p class="small muted">WO yang belum diterima bisa dibatalkan. Setelah diterima, hubungi pengelola WO.</p>
+            <textarea id="uCatatan" class="form-control mb-2" rows="2" maxlength="1000" placeholder="Alasan pembatalan (opsional)"></textarea>
+            <button class="btn btn-outline-danger" onclick="batalkan(${id})">Batalkan WO</button>`;
+        }
+
+        h += `<hr><h3 class="fs-6 mb-3">Riwayat</h3><ul class="riwayat">` + d.log.map(l => `<li>
+            <div class="waktu">${fmtTgl(l.waktu)} oleh ${esc(l.oleh)}</div>
+            ${l.perubahan ? `<div>${esc(l.perubahan)}</div>` : ''}${l.catatan ? `<div class="fst-italic">"${esc(l.catatan)}"</div>` : ''}</li>`).join('') + '</ul>';
+        document.getElementById('mBody').innerHTML = h;
+        modalDetail.show();
+    } catch (e) { woToast(e.message, true); }
+}
+
+async function simpan(id) {
+    const btn = document.getElementById('btnSimpan'); btn.disabled = true;
+    try {
+        const r = await woKirim('/api/wo/' + id, 'PUT', {
+            status: document.getElementById('uStatus').value, prioritas: document.getElementById('uPrio').value,
+            seksi_tujuan: document.getElementById('uSeksi').value, assign_ke: document.getElementById('uAssign').value,
+            target_selesai: document.getElementById('uTarget').value, catatan: document.getElementById('uCatatan').value });
+        woToast(r.message);
+        await muat(); await bukaDetail(id);
+    } catch (e) { woToast(e.message, true); btn.disabled = false; }
+}
+
+async function batalkan(id) {
+    if (!confirm('Batalkan WO ini?')) return;
+    try {
+        const r = await woKirim('/api/wo/' + id, 'PUT', { status: 'Dibatalkan', catatan: document.getElementById('uCatatan').value });
+        woToast(r.message); modalDetail.hide(); muat();
+    } catch (e) { woToast(e.message, true); }
+}
+
+document.getElementById('tbody').addEventListener('click', e => {
+    const tr = e.target.closest('tr.baris'); if (tr) bukaDetail(+tr.dataset.id);
+});
+['fCari', 'fStatus', 'fSeksi'].forEach(i => document.getElementById(i).addEventListener('input', render));
+muat();
+</script>
+{% endblock %}

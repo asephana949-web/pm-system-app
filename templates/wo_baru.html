@@ -1,0 +1,113 @@
+{% extends 'wo_base.html' %}
+{% block title %}Buat WO{% endblock %}
+
+{% block head %}
+<style>
+    .alur { list-style: none; margin: 0; padding: 0; }
+    .alur li { padding: .5rem 0; border-bottom: 1px solid #eef1f3; font-size: .9rem; }
+    .alur li:last-child { border-bottom: 0; }
+    .alur .st { margin-right: .5rem; }
+    label .wajib { color: #b3261e; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3"><h1 class="page-title">Ajukan Work Order</h1>
+    <div class="muted small">Isi sejelas mungkin supaya seksi tujuan bisa langsung menilai dan menjadwalkan pekerjaan.</div></div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="panel"><div class="panel-body">
+            <div id="hasil" class="alert alert-success d-none" role="status"></div>
+            <div id="galat" class="alert alert-danger d-none" role="alert"></div>
+            <div class="row g-3">
+                <div class="col-12"><label class="form-label" for="fJudul">Judul pekerjaan <span class="wajib">*</span></label>
+                    <input id="fJudul" class="form-control" maxlength="200" placeholder="Contoh: Pintu gudang tidak bisa dikunci"></div>
+                <div class="col-md-6"><label class="form-label" for="fSeksi">Seksi tujuan <span class="wajib">*</span></label>
+                    <select id="fSeksi" class="form-select">{% for s in seksi_list %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select></div>
+                <div class="col-md-6"><label class="form-label" for="fPrioritas">Prioritas</label>
+                    <select id="fPrioritas" class="form-select">{% for p in prioritas_list %}<option value="{{ p }}" {% if p == 'Normal' %}selected{% endif %}>{{ p }}</option>{% endfor %}</select>
+                    <div class="form-text">Darurat hanya bila pekerjaan menghentikan operasi atau membahayakan keselamatan.</div></div>
+                <div class="col-md-6"><label class="form-label" for="fLokasi">Lokasi, mesin, atau bangunan <span class="wajib">*</span></label>
+                    <input id="fLokasi" class="form-control" maxlength="150" list="dlArea" placeholder="Contoh: Gudang Besar" autocomplete="off">
+                    <datalist id="dlArea"></datalist></div>
+                <div class="col-md-6"><label class="form-label" for="fMesin">ID mesin <span class="muted">(jika ada)</span></label>
+                    <input id="fMesin" class="form-control" maxlength="50" list="dlMesin" autocomplete="off">
+                    <datalist id="dlMesin"></datalist></div>
+                <div class="col-12"><label class="form-label" for="fUraian">Uraian masalah atau permintaan <span class="wajib">*</span></label>
+                    <textarea id="fUraian" class="form-control" rows="4" maxlength="4000" placeholder="Apa yang rusak atau dibutuhkan, sejak kapan, dan dampaknya."></textarea></div>
+                <div class="col-md-6"><label class="form-label" for="fNama">Nama pemohon <span class="wajib">*</span></label>
+                    <input id="fNama" class="form-control" maxlength="100"></div>
+                <div class="col-md-6"><label class="form-label" for="fDept">Departemen <span class="wajib">*</span></label>
+                    <input id="fDept" class="form-control" maxlength="100" list="dlDept" autocomplete="off"><datalist id="dlDept"></datalist></div>
+                <div class="col-md-6"><label class="form-label" for="fButuh">Dibutuhkan sebelum <span class="muted">(opsional)</span></label>
+                    <input id="fButuh" type="date" class="form-control"></div>
+                <div class="col-md-6"><label class="form-label" for="fRef">No. form atau referensi <span class="muted">(opsional)</span></label>
+                    <input id="fRef" class="form-control" maxlength="50"></div>
+            </div>
+            <div class="mt-4"><button id="btnKirim" class="btn btn-accent" onclick="kirim()">Ajukan WO</button></div>
+        </div></div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="panel"><div class="panel-head">Apa yang terjadi setelah WO diajukan</div>
+            <div class="panel-body"><ol class="alur">
+                <li><span class="st st-Baru">Baru</span>WO masuk dan menunggu dibaca pengelola.</li>
+                <li><span class="st st-Diterima">Diterima</span>WO sudah dinilai dan diteruskan ke seksi tujuan.</li>
+                <li><span class="st st-Antri">Antri</span>Menunggu giliran. Posisi antrian terlihat di daftar WO.</li>
+                <li><span class="st st-Dikerjakan">Dikerjakan</span>Petugas sedang mengerjakan.</li>
+                <li><span class="st st-Menunggu">Menunggu</span>Tertunda, misalnya menunggu material. Alasannya ditulis di catatan.</li>
+                <li><span class="st st-Selesai">Selesai</span>Pekerjaan selesai.</li>
+            </ol>
+            <p class="small muted mt-2 mb-0">Pantau statusnya di halaman <a href="{{ url_for('wo_daftar') }}">{% if is_pemohon %}WO saya{% else %}Daftar WO{% endif %}</a>.</p></div></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const $ = id => document.getElementById(id);
+const KUNCI = 'wo_pemohon_' + WO.username;
+
+try {   // ingat nama & departemen terakhir agar pengisian berikutnya lebih cepat
+    const t = JSON.parse(localStorage.getItem(KUNCI) || '{}');
+    $('fNama').value = t.nama || ''; $('fDept').value = t.dept || '';
+} catch (e) {}
+
+(async function () {
+    try {
+        const p = await woFetch('/api/wo/pilihan');
+        $('dlArea').innerHTML = p.area.map(a => `<option value="${esc(a)}">`).join('');
+        $('dlDept').innerHTML = p.departemen.map(a => `<option value="${esc(a)}">`).join('');
+        $('dlMesin').innerHTML = p.mesin.map(m => `<option value="${esc(m.id)}">${esc(m.nama)}</option>`).join('');
+        window.daftarMesin = p.mesin;
+    } catch (e) { /* saran isian tidak wajib */ }
+})();
+
+$('fMesin').addEventListener('change', () => {
+    const m = (window.daftarMesin || []).find(x => x.id === $('fMesin').value.trim());
+    if (m && !$('fLokasi').value.trim() && m.nama) $('fLokasi').value = m.nama;
+});
+
+async function kirim() {
+    $('galat').classList.add('d-none'); $('hasil').classList.add('d-none');
+    const btn = $('btnKirim'); btn.disabled = true;
+    const body = {
+        judul: $('fJudul').value, seksi_tujuan: $('fSeksi').value, prioritas: $('fPrioritas').value,
+        lokasi: $('fLokasi').value, id_mesin: $('fMesin').value, deskripsi: $('fUraian').value,
+        nama_pemohon: $('fNama').value, departemen_pemohon: $('fDept').value,
+        tgl_dibutuhkan: $('fButuh').value, no_ref: $('fRef').value
+    };
+    try {
+        const r = await woKirim('/api/wo', 'POST', body);
+        try { localStorage.setItem(KUNCI, JSON.stringify({ nama: body.nama_pemohon, dept: body.departemen_pemohon })); } catch (e) {}
+        $('hasil').innerHTML = `WO berhasil diajukan dengan nomor <strong>${esc(r.no_wo)}</strong>. <a href="/wo?buka=${r.id}">Lihat statusnya</a>`;
+        $('hasil').classList.remove('d-none');
+        ['fJudul', 'fLokasi', 'fMesin', 'fUraian', 'fButuh', 'fRef'].forEach(i => $(i).value = '');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+        $('galat').textContent = e.message; $('galat').classList.remove('d-none');
+    } finally { btn.disabled = false; }
+}
+</script>
+{% endblock %}

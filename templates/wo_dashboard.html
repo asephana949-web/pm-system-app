@@ -1,0 +1,149 @@
+{% extends 'wo_base.html' %}
+{% block title %}Dashboard WO{% endblock %}
+
+{% block head %}
+<style>
+    .seg { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: #e9edf0; }
+    .seg span { display: block; height: 100%; }
+    .seg .s-kerja { background: #2e9d62; } .seg .s-antri { background: #e0a526; } .seg .s-tunggu { background: #e3772b; }
+    .num-big { font-size: 1.6rem; font-weight: 600; line-height: 1.1; }
+    .num-label { font-size: .8rem; color: var(--muted); }
+    .kpi-strip { display: flex; flex-wrap: wrap; }
+    .kpi { flex: 1 1 180px; padding: 1rem 1.25rem; border-right: 1px solid var(--line); }
+    .kpi:last-child { border-right: 0; }
+    .kpi .num-big.warn { color: #b3261e; }
+    table.mini { width: 100%; font-size: .9rem; }
+    table.mini th { font-weight: 500; color: var(--muted); font-size: .8rem; padding: .4rem .75rem; border-bottom: 1px solid var(--line); }
+    table.mini td { padding: .5rem .75rem; border-bottom: 1px solid #eef1f3; vertical-align: top; }
+    table.mini tr:last-child td { border-bottom: 0; }
+    .chart-box { position: relative; height: 260px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end mb-3">
+    <div>
+        <h1 class="page-title">{% if is_pemohon %}Status Work Order{% else %}Ringkasan Work Order{% endif %}</h1>
+        <div class="muted small" id="tglHariIni"></div>
+    </div>
+    <a class="btn btn-accent" href="{{ url_for('wo_baru') }}"><i class="fa-solid fa-plus me-1"></i>Buat WO</a>
+</div>
+
+<div class="muted small mb-2">Beban kerja seksi saat ini</div>
+<div class="row g-3 mb-4" id="bebanSeksi"><div class="col-12 muted">Memuat data...</div></div>
+
+<div class="panel mb-4"><div class="kpi-strip" id="kpiStrip"></div></div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-5">
+        <div class="panel h-100"><div class="panel-head">{% if is_pemohon %}WO Anda menurut status{% else %}Semua WO menurut status{% endif %}</div>
+            <div class="panel-body"><div class="chart-box"><canvas id="chartStatus"></canvas></div></div></div>
+    </div>
+    <div class="col-lg-7">
+        <div class="panel h-100"><div class="panel-head">WO masuk dan selesai, 6 bulan terakhir</div>
+            <div class="panel-body"><div class="chart-box"><canvas id="chartTren"></canvas></div></div></div>
+    </div>
+</div>
+
+{% if not is_pemohon %}
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="panel h-100"><div class="panel-head">Sedang dikerjakan</div>
+            <div id="tblKerja" class="panel-body p-0"></div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="panel h-100"><div class="panel-head">Lewat batas waktu</div>
+            <div id="tblTelat" class="panel-body p-0"></div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="panel"><div class="panel-head">Departemen dengan WO aktif terbanyak</div>
+            <div id="tblDept" class="panel-body p-0"></div></div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+const WARNA_STATUS = {Baru:'#8da2b5', Diterima:'#4a86d0', Antri:'#e0a526', Dikerjakan:'#2e9d62', Menunggu:'#e3772b', Selesai:'#9aa5b0', Dibatalkan:'#d3d7da'};
+document.getElementById('tglHariIni').textContent = new Date().toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+function kartuSeksi(s) {
+    const total = s.dikerjakan + s.antri + s.menunggu;
+    const pct = n => total ? (n / total * 100).toFixed(1) : 0;
+    let kalimat = 'Tidak ada WO aktif.';
+    if (total) {
+        kalimat = `${s.dikerjakan} WO sedang dikerjakan, ${s.antri} menunggu giliran`;
+        if (s.menunggu) kalimat += `, ${s.menunggu} tertunda (menunggu material atau pihak lain)`;
+        kalimat += '.';
+    }
+    return `<div class="col-md-6 col-xl-4"><div class="panel p-3 h-100">
+        <div class="d-flex justify-content-between align-items-baseline mb-2">
+            <strong>${esc(s.seksi)}</strong><span class="muted small">selesai 30 hari terakhir: ${s.selesai_30h}</span></div>
+        <div class="seg mb-3" role="img" aria-label="Komposisi WO aktif ${esc(s.seksi)}">
+            <span class="s-kerja" style="width:${pct(s.dikerjakan)}%"></span>
+            <span class="s-antri" style="width:${pct(s.antri)}%"></span>
+            <span class="s-tunggu" style="width:${pct(s.menunggu)}%"></span></div>
+        <div class="row text-center g-2 mb-2">
+            <div class="col-4"><div class="num-big">${s.dikerjakan}</div><div class="num-label">Dikerjakan</div></div>
+            <div class="col-4"><div class="num-big">${s.antri}</div><div class="num-label">Antri</div></div>
+            <div class="col-4"><div class="num-big">${s.menunggu}</div><div class="num-label">Tertunda</div></div></div>
+        <p class="small muted mb-0">${esc(kalimat)}</p></div></div>`;
+}
+
+function kpi(angka, label, peringatan) {
+    return `<div class="kpi"><div class="num-big ${peringatan ? 'warn' : ''}">${angka}</div><div class="num-label">${label}</div></div>`;
+}
+
+function tabel(kolom, baris, kosong) {
+    if (!baris.length) return `<div class="p-3 muted small">${kosong}</div>`;
+    return `<div class="table-responsive"><table class="mini"><thead><tr>${kolom.map(k => `<th>${k}</th>`).join('')}</tr></thead><tbody>${baris.join('')}</tbody></table></div>`;
+}
+const linkWo = (id, no) => `<a href="/wo?buka=${id}">${esc(no)}</a>`;
+
+async function muat() {
+    try {
+        const d = await woFetch('/api/wo/stats');
+        const seksiTampil = d.beban_seksi.filter(s => s.seksi !== 'Lainnya' || s.dikerjakan + s.antri + s.menunggu + s.selesai_30h > 0);
+        document.getElementById('bebanSeksi').innerHTML = seksiTampil.map(kartuSeksi).join('');
+
+        const r = d.ringkasan;
+        const rata = r.rata2_hari === null ? '-' : r.rata2_hari + ' hari';
+        document.getElementById('kpiStrip').innerHTML =
+            kpi(r.aktif, WO.isPemohon ? 'WO Anda yang masih aktif' : 'WO aktif') +
+            kpi(r.baru, 'Belum direspon (status Baru)') +
+            (WO.isPemohon ? kpi(r.selesai_bulan_ini, 'Selesai bulan ini') : kpi(r.terlambat, 'Lewat batas waktu', r.terlambat > 0)) +
+            kpi(rata, 'Rata-rata sampai selesai (90 hari)');
+
+        const ps = d.per_status;
+        new Chart(document.getElementById('chartStatus'), {
+            type: 'doughnut',
+            data: { labels: WO.status, datasets: [{ data: WO.status.map(s => ps[s] || 0), backgroundColor: WO.status.map(s => WARNA_STATUS[s]) }] },
+            options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } }, cutout: '58%' }
+        });
+        new Chart(document.getElementById('chartTren'), {
+            type: 'bar',
+            data: { labels: d.tren.map(t => BULAN[+t.bulan.split('-')[1] - 1] + ' ' + t.bulan.slice(2, 4)),
+                    datasets: [{ label: 'Masuk', data: d.tren.map(t => t.masuk), backgroundColor: '#4a86d0' },
+                               { label: 'Selesai', data: d.tren.map(t => t.selesai), backgroundColor: '#2e9d62' }] },
+            options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+        });
+
+        if (!WO.isPemohon) {
+            document.getElementById('tblKerja').innerHTML = tabel(['No. WO', 'Pekerjaan', 'Seksi', 'Ditugaskan', 'Berjalan'],
+                d.sedang_dikerjakan.map(w => `<tr><td>${linkWo(w.id, w.no_wo)}</td><td>${esc(w.judul)}</td><td>${esc(w.seksi)}</td><td>${esc(w.assign_ke || '-')}</td><td>${w.hari === null ? '-' : w.hari + ' hari'}</td></tr>`),
+                'Belum ada WO yang berstatus Dikerjakan.');
+            document.getElementById('tblTelat').innerHTML = tabel(['No. WO', 'Pekerjaan', 'Status', 'Terlambat'],
+                d.terlambat_list.map(w => `<tr><td>${linkWo(w.id, w.no_wo)}</td><td>${esc(w.judul)}</td><td>${badgeStatus(w.status)}</td><td class="flag-telat">${w.hari_telat} hari</td></tr>`),
+                'Tidak ada WO yang melewati batas waktu.');
+            document.getElementById('tblDept').innerHTML = tabel(['Departemen', 'WO aktif'],
+                d.per_departemen.map(x => `<tr><td>${esc(x.departemen)}</td><td>${x.aktif}</td></tr>`), 'Belum ada WO aktif.');
+        }
+    } catch (e) {
+        document.getElementById('bebanSeksi').innerHTML = `<div class="col-12"><div class="alert alert-danger mb-0">${esc(e.message)}</div></div>`;
+    }
+}
+muat();
+</script>
+{% endblock %}
