@@ -7,6 +7,7 @@ from flask_cors import CORS
 import pymysql
 import json
 from google import genai
+from google.genai import types
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'kunci_rahasia_sangat_aman')
@@ -17,10 +18,16 @@ CORS(app)
 # ==========================================
 # Key dibaca dari Environment Variable GEMINI_API_KEY di Vercel.
 # Jangan pernah menuliskan key asli langsung di file ini!
-client_ai = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+# PENTING: versi API dikunci ke v1beta. SDK google-genai versi baru memakai v1 secara bawaan,
+# padahal alias seperti 'gemini-flash-latest' hanya ada di v1beta (kalau tidak dikunci -> error 404 NOT_FOUND).
+client_ai = genai.Client(
+    api_key=os.environ.get("GEMINI_API_KEY"),
+    http_options=types.HttpOptions(api_version="v1beta")
+)
 # Alias resmi Google yang otomatis mengikuti model Flash stabil terbaru,
 # supaya kode ini tidak perlu diubah lagi setiap Google memensiunkan versi model.
-MODEL_AI = "gemini-flash-latest"
+# Bisa diganti tanpa ubah kode: isi Environment Variable GEMINI_MODEL di Vercel (mis. gemini-2.5-flash).
+MODEL_AI = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
 
 # ==========================================
 # KONFIGURASI DATABASE (dibaca dari Environment Variable di Vercel)
@@ -207,6 +214,8 @@ def generate_ai_diagnosis():
     pesan_gagal = "Model AI sedang mengalami permintaan tinggi (sibuk). Sudah dicoba ulang beberapa kali, silakan coba lagi dalam beberapa menit."
     if error_terakhir and not (("503" in str(error_terakhir)) or ("UNAVAILABLE" in str(error_terakhir))):
         pesan_gagal = str(error_terakhir)
+        if "NOT_FOUND" in pesan_gagal:
+            pesan_gagal += f" | Petunjuk: model yang dipakai saat ini '{MODEL_AI}'. Bila model tidak tersedia, isi Environment Variable GEMINI_MODEL di Vercel dengan nama model lain."
 
     return jsonify({"status": "error", "message": pesan_gagal}), 500
 
